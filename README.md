@@ -58,6 +58,6 @@ Credentials, environment configuration, operational datasets, database backups, 
 
 Source code access is intended to be restricted to authorized project maintainers and collaborators. Requests for access should be directed to the project owner or designated DENR-CAR system administrator for review.
 
-This README provides a project overview. Installation instructions, deployment configuration, and other internal technical documentation should be shared through approved channels with authorized personnel.
+This README provides an overview of the project, its features, and its intended access policy.
 
 Repository visibility and collaborator permissions must be configured on the repository hosting platform to enforce this access policy. Updating this README does not change repository visibility or revoke access to source code or previously published content.
