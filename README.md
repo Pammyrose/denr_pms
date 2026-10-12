@@ -18,7 +18,7 @@ The system provides a centralized workspace for administrators, Regional Office 
 
 - Physical target and accomplishment monitoring with monthly, quarterly, and annual views.
 - Financial target and accomplishment recording.
-- Dashboard summaries, performance rankings, and delay trends.
+- Dashboard summaries, target and accomplishment comparisons, and delay trends.
 - WFP Excel import previews and report exports.
 - Review and approval of requests to change accomplishments in locked reporting periods.
 - Notifications for approval decisions.
