@@ -1,3 +1,8 @@
+@once
+    <link rel="stylesheet" href="{{ asset('css/button-loading.css') }}?v={{ filemtime(public_path('css/button-loading.css')) }}">
+    <script src="{{ asset('js/button-loading.js') }}?v={{ filemtime(public_path('js/button-loading.js')) }}" defer></script>
+@endonce
+
 <style>
   html {
     font-size: 85%;

@@ -1,6 +1,6 @@
-<div class="mb-4">
+<div class="dashboard-overall">
   <div class="d-flex flex-column flex-xl-row align-items-xl-center justify-content-between gap-3 mb-3">
-    <h3 class="text-xl font-bold text-gray-800 mb-0 d-flex align-items-center gap-3">
+    <h3 class="dashboard-section-heading text-xl font-bold text-gray-800 mb-0 d-flex align-items-center gap-3">
       <span class="d-inline-flex align-items-center justify-content-center rounded-circle text-white bg-primary" style="width: 36px; height: 36px;">
         <i class="fa-solid fa-chart-pie"></i>
       </span>
@@ -10,17 +10,17 @@
     @include('components.dashboard_filters')
   </div>
 
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-    <div class="bg-white rounded-2xl shadow-lg p-6 border border-primary-subtle position-relative overflow-hidden group hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
+  <div class="dashboard-summary-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div class="dashboard-summary-card bg-white rounded-2xl shadow-lg p-6 border border-primary-subtle position-relative overflow-hidden group hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
       <div class="position-absolute top-0 start-0 w-100" style="height: 4px; background: #2563eb;"></div>
       <div class="d-flex align-items-center justify-content-between mb-4">
-        <p class="text-md text-black font-bold uppercase tracking-wide mb-0">Overall Progress</p>
+        <p class="dashboard-summary-label text-md text-black font-bold uppercase tracking-wide mb-0">Overall Progress</p>
         <span class="d-inline-flex align-items-center justify-content-center rounded-circle text-primary" style="width: 38px; height: 38px; background: #eff6ff;">
           <i class="fa-solid fa-gauge-high"></i>
         </span>
       </div>
       <div class="flex items-center justify-center">
-        <div class="relative w-28 h-28">
+        <div class="dashboard-summary-ring relative w-28 h-28">
           <svg class="w-full h-full -rotate-90" viewBox="0 0 100 100">
             <circle cx="50" cy="50" r="44" stroke="#e5e7eb" stroke-width="12" fill="none" />
             <circle cx="50" cy="50" r="44" stroke="#2563eb" stroke-width="12" stroke-dasharray="276.46" stroke-dashoffset="{{ 276.46 * (1 - ((float) ($overallProgress ?? 0) / 100)) }}" stroke-linecap="round" fill="none" />
@@ -32,44 +32,46 @@
       </div>
     </div>
 
-    <button type="button" class="bg-white rounded-2xl shadow-lg p-6 border border-success-subtle position-relative overflow-hidden group hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 text-start w-100"
+    <button type="button" class="dashboard-summary-card bg-white rounded-2xl shadow-lg p-6 border border-success-subtle position-relative overflow-hidden group hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 text-start w-100"
       data-bs-toggle="modal" data-bs-target="#papListModal" aria-label="View all PAP records">
       <div class="position-absolute top-0 start-0 w-100" style="height: 4px; background: #059669;"></div>
       <div class="d-flex align-items-center justify-content-between mb-4">
-        <p class="text-md text-black font-bold uppercase tracking-wide mb-0">P/A/P's</p>
+        <p class="dashboard-summary-label text-md text-black font-bold uppercase tracking-wide mb-0">PAP Records</p>
         <span class="d-inline-flex align-items-center justify-content-center rounded-circle text-success" style="width: 38px; height: 38px; background: #ecfdf5;">
           <i class="fa-solid fa-folder-tree"></i>
         </span>
       </div>
       <div class="d-flex align-items-end justify-content-center gap-3">
-        <p class="text-7xl font-extrabold text-emerald-600 mb-0">{{ number_format((float) ($totalPap ?? 0), 0) }}</p>
+        <p class="dashboard-summary-value text-7xl font-extrabold text-emerald-600 mb-0">{{ number_format((float) ($totalPap ?? 0), 0) }}</p>
       </div>
+      <p class="dashboard-summary-note">Programs, activities &amp; projects <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></p>
     </button>
 
-    <button type="button" class="bg-white rounded-2xl shadow-lg p-6 border border-info-subtle position-relative overflow-hidden group hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 text-start w-100"
+    <button type="button" class="dashboard-summary-card bg-white rounded-2xl shadow-lg p-6 border border-info-subtle position-relative overflow-hidden group hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 text-start w-100"
       data-bs-toggle="modal" data-bs-target="#indicatorListModal" aria-label="View all indicator records">
       <div class="position-absolute top-0 start-0 w-100" style="height: 4px; background: #0891b2;"></div>
       <div class="d-flex align-items-center justify-content-between mb-4">
-        <p class="text-md text-black font-bold uppercase tracking-wide mb-0">Indicators</p>
+        <p class="dashboard-summary-label text-md text-black font-bold uppercase tracking-wide mb-0">Indicators</p>
         <span class="d-inline-flex align-items-center justify-content-center rounded-circle text-info" style="width: 38px; height: 38px; background: #ecfeff;">
           <i class="fa-solid fa-list-check"></i>
         </span>
       </div>
       <div class="d-flex align-items-end justify-content-center gap-3">
-        <p class="text-7xl font-extrabold text-blue-700 mb-0">{{ number_format((float) ($totalIndicators ?? 0), 0) }}</p>
+        <p class="dashboard-summary-value text-7xl font-extrabold text-blue-700 mb-0">{{ number_format((float) ($totalIndicators ?? 0), 0) }}</p>
       </div>
+      <p class="dashboard-summary-note">View indicator records <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></p>
     </button>
 
-    <div class="bg-white rounded-2xl shadow-lg p-6 border border-warning-subtle position-relative overflow-hidden group hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
+    <div class="dashboard-summary-card bg-white rounded-2xl shadow-lg p-6 border border-warning-subtle position-relative overflow-hidden group hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
       <div class="position-absolute top-0 start-0 w-100" style="height: 4px; background: #f59e0b;"></div>
       <div class="d-flex align-items-center justify-content-between mb-4">
-        <p class="text-md text-black font-bold uppercase tracking-wide mb-0">Financial Utilization</p>
+        <p class="dashboard-summary-label text-md text-black font-bold uppercase tracking-wide mb-0">Financial Utilization</p>
         <span class="d-inline-flex align-items-center justify-content-center rounded-circle text-warning" style="width: 38px; height: 38px; background: #fffbeb;">
           <i class="fa-solid fa-coins"></i>
         </span>
       </div>
       <div class="flex items-center justify-center">
-        <div class="relative w-28 h-28">
+        <div class="dashboard-summary-ring relative w-28 h-28">
           <svg class="w-full h-full -rotate-90" viewBox="0 0 100 100">
             <circle cx="50" cy="50" r="44" stroke="#e5e7eb" stroke-width="12" fill="none" />
             <circle cx="50" cy="50" r="44" stroke="#f59e0b" stroke-width="12" stroke-dasharray="276.46" stroke-dashoffset="{{ is_numeric($financialUtilization ?? null) ? 276.46 * (1 - ((float) $financialUtilization / 100)) : 276.46 }}" stroke-linecap="round" fill="none" />

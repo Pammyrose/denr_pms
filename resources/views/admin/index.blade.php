@@ -110,8 +110,9 @@
         }
     </style>
 
+    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v={{ filemtime(public_path('css/dashboard.css')) }}">
 </head>
-<body>
+<body class="dashboard-page">
 
     <!-- Top navigation bar (full width) -->
     @include('components.nav')
@@ -122,7 +123,7 @@
         @include('components.sidebar')
 
         <!-- Main content wrapper -->
-        <main class="flex-grow-1 p-4 bg-gradient-to-b from-gray-50 to-white">
+        <main class="dashboard-main flex-grow-1 p-4 bg-gradient-to-b from-gray-50 to-white">
             @include('components.dashboard_content')
         </main>
     </div>

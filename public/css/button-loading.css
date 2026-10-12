@@ -1,0 +1,4 @@
+.pms-button-loading { cursor: wait !important; }
+.pms-button-spinner { display: inline-block; width: 1em; height: 1em; margin-right: .4em; vertical-align: -.125em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: pms-button-spin .75s linear infinite; }
+@keyframes pms-button-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .pms-button-spinner { animation: none; } }

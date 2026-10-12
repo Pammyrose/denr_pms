@@ -23,7 +23,7 @@ The application is a server-rendered Laravel modular monolith. Blade provides th
 
 ## Features
 
-- Role-based authentication and office-scoped access
+- Email and password sign-in with a required emailed one-time code, role-based authentication, and office-scoped access
 - Dashboard summaries, performance rankings, and delay trends
 - Monthly, quarterly, and annual physical target/accomplishment monitoring
 - Financial target and accomplishment entry
@@ -145,6 +145,35 @@ Password: password
 > **Important:** These credentials are public development defaults. Change or remove every seeded password before deploying the application or using real data.
 
 Additional sample roles are defined in `database/seeders/UsersSeeder.php`. PENRO and CENRO accounts should be assigned to the appropriate office before they are used for office-scoped workflows.
+
+## Email sign-in setup
+
+Every sign-in requires the account password followed by a six-digit email code. Users remain signed out until the code is verified. Codes expire after 10 minutes, are stored as hashes in the configured cache, and are consumed after verification. Resending replaces the previous challenge. Email sends are limited to one per minute and ten per hour per account; five incorrect codes block verification for 10 minutes, including across resends. Changing an account's email or password invalidates its pending sign-in.
+
+Configure a real mail provider in `.env` before using this with live accounts:
+
+```dotenv
+MAIL_MAILER=smtp
+MAIL_SCHEME=smtp
+MAIL_HOST=your-smtp-host
+MAIL_PORT=587
+MAIL_USERNAME=your-smtp-username
+MAIL_PASSWORD=your-smtp-password
+MAIL_FROM_ADDRESS=pms@your-domain.example
+MAIL_FROM_NAME="DENR-CAR PMS"
+```
+
+Use your provider's required scheme and port (`smtps` with port 465 for implicit TLS). Run `php artisan config:clear` after changing mail settings. The default `MAIL_MAILER=log` writes emails to the configured application log for local development; it does not deliver them. Keep production mail delivery and application logs restricted, and use a shared persistent cache when running multiple application servers. Existing accounts must have accessible email addresses.
+
+Sign-in emails use encrypted jobs on the `email-auth` queue so the verification page opens without waiting for SMTP. Use `QUEUE_CONNECTION=database` and ensure the existing jobs migration has run. Start the worker alongside the web server:
+
+```bash
+php artisan queue:work --queue=email-auth,default --sleep=1 --tries=3 --timeout=30
+```
+
+`composer run dev` starts this queue through a listener automatically. Production needs a supervised worker that restarts after failure or reboot; restart workers after deployments or mail configuration changes. `QUEUE_CONNECTION=sync` is for tests only and sends mail during the request. Jobs retry up to three times, skip cancelled or expired challenges, and recheck the account before sending. SMTP operations have a configurable `MAIL_TIMEOUT` of 15 seconds. The verification page polls for queued, sent, failed, or expired status and provides resend guidance if delivery fails; users remain signed out until a valid code is entered.
+
+On Windows, `powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./tools/start-email-worker.ps1` starts a hidden worker for `email-auth` and avoids duplicating the worker it started earlier. The execution-policy override applies to that process only. Worker output and its process record live in `storage/app/private`. Run it again after restarting the computer if you run the web server separately from `composer run dev`.
 
 ## Testing
 

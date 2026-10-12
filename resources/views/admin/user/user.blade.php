@@ -122,7 +122,7 @@
 
                 <!-- Modal Body -->
                 <div class="modal-body p-4 bg-white">
-                    <form method="POST" action="{{ route('users.store') }}" class="space-y-1" id="userForm">
+                    <form method="POST" action="{{ route('users.store') }}" class="space-y-1" id="userForm" data-save-loading>
                         @csrf
                         <input type="hidden" name="_method" id="userFormMethod" value="PUT" disabled>
                         <input type="hidden" name="user_id" id="userIdField" value="{{ old('user_id') }}">

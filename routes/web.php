@@ -26,8 +26,14 @@ use App\Http\Controllers\NotificationCountController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 
-Route::get('/', [AuthController::class, 'showLogin'])->name('login');
-Route::post('/login', [AuthController::class, 'login']);
+Route::middleware([\App\Http\Middleware\PreventAuthenticationCaching::class, 'guest'])->group(function () {
+    Route::get('/', [AuthController::class, 'showLogin'])->name('login');
+    Route::post('/login', [AuthController::class, 'login'])->block();
+    Route::get('/login/code', [AuthController::class, 'showCode'])->name('login.code');
+    Route::get('/login/code/status', [AuthController::class, 'codeStatus'])->middleware('throttle:30,1')->name('login.code.status');
+    Route::post('/login/code', [AuthController::class, 'verifyCode'])->middleware('throttle:10,1')->block()->name('login.code.verify');
+    Route::post('/login/code/resend', [AuthController::class, 'resendCode'])->middleware('throttle:5,1')->block()->name('login.code.resend');
+});
 
 $adminRoles = 'role:admin';
 $viewRoles = 'role:super-admin,admin,user,penro,cenro,ro-office,ro office';
@@ -292,10 +298,11 @@ Route::prefix('admin/continuing_physical')->name('admin.continuing_physical.')->
 
 
 Route::post('/logout', function (Request $request) {
+    app(\App\Services\EmailLoginChallenge::class)->cancel($request);
     auth()->logout();
 
     $request->session()->invalidate();
     $request->session()->regenerateToken();
 
     return redirect('/');
-})->name('logout');
+})->middleware(\App\Http\Middleware\PreventAuthenticationCaching::class)->block()->name('logout');

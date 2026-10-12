@@ -1,167 +1,48 @@
-<!DOCTYPE html>
-<html lang="en" class="h-100">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - {{ config('app.name', 'Laravel') }}</title>
+@extends('auth.layout')
 
-    <!-- Bootstrap 5 -->
-    <link href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
-    <!-- Font Awesome for icons -->
-    <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}">
+@section('title', 'Sign in')
 
-    <style>
-        .login-container {
-            max-width: 420px;
-            width: 100%;
-        }
-        .card {
-            border: 0.3px solid gray;
-            border-radius: 16px;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-        }
-        .card-header {
-            background: #1e40af;
-            color: white;
-            border-bottom: none;
-            padding: 1rem 1.5rem;
-            text-align: center;
-        }
-        .img{
-            height: 100px;
-        }
-        .btn-primary {
-            background: #1e40af;
-            border: 1px;
-            border-color: black;
-            padding: 0.75rem;
-            font-weight: 500;
-            transition: all 0.3s;
-        }
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
-        }
-        .form-control:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.25);
-        }
-    </style>
-</head>
-<body class="d-flex align-items-center bg-light h-100">
-
-<div class="container login-container mx-auto px-3">
-
-    <div class="card">
-        <div class="card-header">
-            <img src="denr_logo.png" alt="Logo" class="img">
-            <p class="mt-2 mb-0 opacity-75">DENR-CAR Performance Monitoring System</p>
+@section('content')
+    <h2>Welcome back.</h2>
+    <p class="intro">Sign in to your account to continue your work.</p>
+    @if (session('error'))
+        <div class="alert" role="alert">{{ session('error') }}</div>
+    @endif
+    @if ($errors->any())
+        <div class="alert" role="alert">
+            <ul>@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
         </div>
-
-        <div class="card-body p-4 p-md-5">
-
-            @if (session('error'))
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    {{ session('error') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            @endif
-
-            @if ($errors->any())
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <ul class="mb-0">
-                        @foreach ($errors->all() as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            @endif
-
-            <form action="/login" method="POST">
-                @csrf
-
-                <div class="mb-4">
-                    <label for="email" class="form-label fw-medium">Email address</label>
-                    <div class="input-group input-group-lg">
-                        <span class="input-group-text"><i class="far fa-envelope"></i></span>
-                        <input 
-                            id="email" 
-                            type="email" 
-                            class="form-control @error('email') is-invalid @enderror" 
-                            name="email" 
-                            value="{{ old('email') }}" 
-                            required 
-                            autocomplete="email" 
-                            autofocus 
-                            placeholder="name@example.com"
-                        >
-                    </div>
-                    @error('email')
-                        <div class="invalid-feedback d-block">{{ $message }}</div>
-                    @enderror
-                </div>
-
-                <div class="mb-4">
-                    <label for="password" class="form-label fw-medium">Password</label>
-                    <div class="input-group input-group-lg">
-                        <span class="input-group-text"><i class="fas fa-lock"></i></span>
-                        <input 
-                            id="password" 
-                            type="password" 
-                            class="form-control @error('password') is-invalid @enderror" 
-                            name="password" 
-                            required 
-                            autocomplete="current-password" 
-                            placeholder="••••••••"
-                        >
-                    </div>
-                    @error('password')
-                        <div class="invalid-feedback d-block">{{ $message }}</div>
-                    @enderror
-                </div>
-
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="remember" id="remember" {{ old('remember') ? 'checked' : '' }}>
-                        <label class="form-check-label" for="remember">
-                            Remember me
-                        </label>
-                    </div>
-
-                    @if (Route::has('password.request'))
-                        <a href="{{ route('password.request') }}" class="text-decoration-none small">
-                            Forgot password?
-                        </a>
-                    @endif
-                </div>
-
-                <button type="submit" class="btn btn-primary btn-lg w-100">
-                    Sign In
-                </button>
-            </form>
-
-            @if (Route::has('register'))
-                <div class="text-center mt-4">
-                    <p class="text-muted">
-                        Don't have an account? 
-                        <a href="{{ route('register') }}" class="text-primary fw-medium text-decoration-none">
-                            Create one
-                        </a>
-                    </p>
-                </div>
-            @endif
-
+    @endif
+    <form action="{{ url('/login') }}" method="POST" data-submit-loading>
+        @csrf
+        <div class="field">
+            <label for="email">Email address</label>
+            <div class="input-wrap">
+                <i class="fa-regular fa-envelope" aria-hidden="true"></i>
+                <input id="email" type="email" name="email" value="{{ old('email') }}" required autocomplete="email" autofocus placeholder="you@example.com" @error('email') aria-invalid="true" aria-describedby="email-error" @enderror>
+            </div>
+            @error('email')<div id="email-error" class="field-error">{{ $message }}</div>@enderror
         </div>
-    </div>
-
-    <div class="text-center mt-4 text-muted small">
-        © {{ date('Y') }} DENR-PMS • All rights reserved
-    </div>
-
-</div>
-
-<script src="{{ asset('vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
-</body>
-</html>
+        <div class="field">
+            <label for="password">Password</label>
+            <div class="input-wrap">
+                <i class="fa-solid fa-lock" aria-hidden="true"></i>
+                <input id="password" type="password" name="password" data-password required autocomplete="current-password" placeholder="Enter your password" @error('password') aria-invalid="true" aria-describedby="password-error" @enderror>
+                <button class="password-toggle" type="button" data-password-toggle aria-controls="password" aria-label="Show password" aria-pressed="false" hidden><i class="fa-regular fa-eye" aria-hidden="true"></i></button>
+            </div>
+            @error('password')<div id="password-error" class="field-error">{{ $message }}</div>@enderror
+        </div>
+        <div class="security-note">
+            <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
+            <div><strong>An extra layer of protection</strong><p>We'll email you a code to complete sign-in.</p></div>
+        </div>
+        <button class="button button-primary" type="submit" data-loading-label="Signing in…">
+            <span data-submit-label>Sign in</span>
+            <i class="fa-solid fa-arrow-right" data-submit-icon aria-hidden="true"></i>
+            <span class="button-spinner" data-submit-spinner aria-hidden="true" hidden></span>
+        </button>
+    </form>
+    <p class="account-help">Need help accessing your account?<br>Contact your system administrator.
+        @if (Route::has('password.request'))<br><a href="{{ route('password.request') }}">Forgot password?</a>@endif
+    </p>
+@endsection

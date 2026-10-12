@@ -1901,7 +1901,7 @@
     if (typeof saveAllSectionEntries === 'function') {
       saveAllSectionEntries = async function () {
         const saveAllBtn = document.getElementById('saveAllBtn');
-        const originalSaveBtnHtml = saveAllBtn ? saveAllBtn.innerHTML : '';
+        if (PMSButtonLoading.isBusy(saveAllBtn)) return;
         const targetEntries = config.accomplishmentsOnly ? [] : collectChangedTargetEntries();
         let accompEntries = attachTouchedPeriods(collectChangedAccomplishmentEntries(), 'accomp');
         const financialTargetEntries = config.accomplishmentsOnly ? [] : collectChangedEntries('financial', 'target');
@@ -1930,10 +1930,7 @@
           }
         }
 
-        if (saveAllBtn) {
-          saveAllBtn.disabled = true;
-          saveAllBtn.innerHTML = '<i class="fa fa-spinner fa-spin me-1"></i> Saving...';
-        }
+        PMSButtonLoading.start(saveAllBtn);
 
         try {
           const results = await Promise.all([
@@ -1962,10 +1959,7 @@
             ? 'Locked-month change request submitted for Regional Office/admin approval.'
             : 'Data saved successfully.');
         } finally {
-          if (saveAllBtn) {
-            saveAllBtn.disabled = false;
-            saveAllBtn.innerHTML = originalSaveBtnHtml;
-          }
+          PMSButtonLoading.stop(saveAllBtn);
         }
       };
     }

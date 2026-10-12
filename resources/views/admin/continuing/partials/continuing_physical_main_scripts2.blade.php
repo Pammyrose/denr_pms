@@ -1154,7 +1154,7 @@
 
         async function saveAllSectionEntries() {
             const saveAllBtn = document.getElementById('saveAllBtn');
-            const originalSaveBtnHtml = saveAllBtn ? saveAllBtn.innerHTML : '';
+            if (PMSButtonLoading.isBusy(saveAllBtn)) return;
 
             const targetEntries = collectChangedTargetEntries();
             const accompEntries = collectChangedAccomplishmentEntries();
@@ -1164,10 +1164,7 @@
                 return;
             }
 
-            if (saveAllBtn) {
-                saveAllBtn.disabled = true;
-                saveAllBtn.innerHTML = '<i class="fa fa-spinner fa-spin me-1"></i> Saving...';
-            }
+            PMSButtonLoading.start(saveAllBtn);
 
             try {
                 const [targetResult, accompResult] = await Promise.all([
@@ -1197,10 +1194,7 @@
 
                 showTopRightSuccessAlert('Data saved successfully.');
             } finally {
-                if (saveAllBtn) {
-                    saveAllBtn.disabled = false;
-                    saveAllBtn.innerHTML = originalSaveBtnHtml;
-                }
+                PMSButtonLoading.stop(saveAllBtn);
             }
         }
 

@@ -31,6 +31,7 @@
             const token = document.querySelector('input[name="_token"]')?.value || '';
             const actionUrl = form.getAttribute('action');
             const submitButton = form.querySelector('button[type="submit"]');
+            if (PMSButtonLoading.isBusy(submitButton)) return;
             const selectedOffices = Array.from(document.querySelectorAll('.office-checkbox:checked'))
                 .map(checkbox => checkbox.value);
 
@@ -65,7 +66,7 @@
                 return;
             }
 
-            if (submitButton) submitButton.disabled = true;
+            PMSButtonLoading.start(submitButton);
 
             try {
                 const matchedPap = findMatchingPapFromModal();
@@ -189,7 +190,7 @@
                 console.error('Save error:', error);
                 showTopRightErrorAlert(error?.message || 'An error occurred while saving PAP and indicator.');
             } finally {
-                if (submitButton) submitButton.disabled = false;
+                PMSButtonLoading.stop(submitButton);
             }
         });
 

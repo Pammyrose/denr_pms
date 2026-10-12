@@ -2,13 +2,29 @@
 
 namespace Tests\Feature;
 
+use App\Mail\LoginCode;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class LoginTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Mail::fake();
+    }
+
+    private function completeLogin(array $credentials): void
+    {
+        $this->post('/login', $credentials)->assertRedirect(route('login.code'));
+        $this->assertGuest();
+        $code = Mail::sent(LoginCode::class)->last()->code;
+        $this->post(route('login.code.verify'), ['code' => $code])->assertRedirect(route('dashboard'));
+    }
 
     private function account(): User
     {
@@ -28,7 +44,7 @@ class LoginTest extends TestCase
         $user = $this->account();
         $this->withSession(['marker' => 'preserved']);
         $sessionId = session()->getId();
-        $this->post('/login', ['email' => $user->email, 'password' => 'CorrectPassword!'])->assertRedirect(route('dashboard'));
+        $this->completeLogin(['email' => $user->email, 'password' => 'CorrectPassword!']);
         $this->assertAuthenticatedAs($user);
         $this->assertNotSame($sessionId, session()->getId());
         $this->post(route('logout'))->assertRedirect('/');
@@ -54,7 +70,7 @@ class LoginTest extends TestCase
         $this->postJson('/login', $credentials)->assertStatus(429)->assertJsonValidationErrors('email');
         $this->assertGuest();
         $this->travel(61)->seconds();
-        $this->post('/login', $credentials)->assertRedirect(route('dashboard'));
+        $this->completeLogin($credentials);
         $this->assertAuthenticated();
     }
 
@@ -88,7 +104,7 @@ class LoginTest extends TestCase
         for ($attempt = 0; $attempt < 4; $attempt++) {
             $this->failLogin();
         }
-        $this->post('/login', ['email' => 'admin@example.test', 'password' => 'CorrectPassword!'])->assertRedirect(route('dashboard'));
+        $this->completeLogin(['email' => 'admin@example.test', 'password' => 'CorrectPassword!']);
         $this->post(route('logout'));
         for ($attempt = 0; $attempt < 5; $attempt++) {
             $this->failLogin();

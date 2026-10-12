@@ -1,0 +1,88 @@
+/* Dashboard presentation only; calculations and interaction hooks live elsewhere. */
+.dashboard-page { background: #f3f6fb; color: #172b4d; font-size: 15px; }
+.dashboard-page .dashboard-main { padding: 28px !important; background: #f3f6fb; min-width: 0; }
+.dashboard-page .dashboard-heading { margin-bottom: 22px; }
+.dashboard-page .dashboard-heading h2 { font-size: 28px; letter-spacing: -.7px; line-height: 1.2; margin: 0 0 7px; }
+.dashboard-page .dashboard-description { margin: 0; font-size: 14px; color: #52647e; line-height: 1.6; }
+.dashboard-page .dashboard-section-heading { font-size: 18px; letter-spacing: -.2px; }
+.dashboard-page .dashboard-overall { margin-bottom: 24px; }
+.dashboard-page .dashboard-summary-grid { gap: 18px; }
+.dashboard-page .dashboard-summary-card { border-color: #dfe6f1 !important; border-radius: 14px; padding: 20px; box-shadow: 0 3px 12px #17356707; min-height: 195px; display: flex; flex-direction: column; }
+.dashboard-page button.dashboard-summary-card:hover { border-color: #8dabe3 !important; box-shadow: 0 7px 22px #17356712; transform: translateY(-2px); }
+.dashboard-page .dashboard-summary-card > .d-flex.align-items-center { margin-bottom: 10px !important; }
+.dashboard-page .dashboard-summary-label { font-size: 13px; letter-spacing: .45px; font-weight: 650; color: #344563 !important; }
+.dashboard-page .dashboard-summary-value { font-size: 46px; line-height: 1.15; font-variant-numeric: tabular-nums; letter-spacing: -1px; }
+.dashboard-page .dashboard-summary-ring { width: 90px; height: 90px; }
+.dashboard-page .dashboard-summary-ring .text-4xl { font-size: 28px; }
+.dashboard-page .dashboard-summary-note { margin: auto 0 0; padding-top: 12px; font-size: 12px; line-height: 1.5; color: #52647e; text-align: center; }
+.dashboard-page .dashboard-summary-note i { font-size: 10px; margin-left: 4px; }
+.dashboard-page #dashboardFilterForm { gap: 12px !important; padding: 12px 14px; background: #fff; border: 1px solid #dfe6f1; border-radius: 12px; }
+.dashboard-page #dashboardFilterForm label { font-size: 13px !important; color: #344563 !important; }
+.dashboard-page #dashboardFilterForm .form-select { min-height: 38px; border-color: #ccd7e8 !important; border-radius: 7px; font-size: 14px; box-shadow: none !important; }
+.dashboard-page #dashboardFilterStatus { font-size: 13px; }
+.dashboard-page .dashboard-comparison-section { margin-bottom: 26px; }
+.dashboard-page .dashboard-chart-guide { display: flex; gap: 8px; align-items: flex-start; margin: 0 0 12px; color: #52647e; font-size: 13px; line-height: 1.6; }
+.dashboard-page .dashboard-chart-guide i { margin-top: 4px; color: #526f9e; }
+.dashboard-page #dashboardPerformanceComparison { gap: 20px; }
+.dashboard-page .performance-card { border: 1px solid #dfe6f1; border-top-width: 3px !important; border-radius: 14px; box-shadow: 0 3px 12px #17356707; }
+.dashboard-page .performance-card-header { min-height: 82px; padding: 16px 20px; flex-wrap: wrap; gap: 12px; }
+.dashboard-page .performance-card-header h3 { font-size: 18px; line-height: 1.35; gap: 10px !important; letter-spacing: -.2px; }
+.dashboard-page .performance-card-icon { width: 34px; height: 34px; font-size: 15px; }
+.dashboard-page .performance-kind-toggle { box-shadow: none; }
+.dashboard-page .performance-kind-toggle button { font-size: 12px; padding: 7px 10px; color: #44546f; }
+.dashboard-page .performance-kind-toggle button.active { color: #fff; }
+.dashboard-page .performance-card-controls { padding: 14px 20px; flex-wrap: wrap; gap: 12px; }
+.dashboard-page .performance-control-label { font-size: 11px; color: #44546f; letter-spacing: .5px; margin-bottom: 6px; }
+.dashboard-page .performance-card-controls .form-select, .dashboard-page .performance-measure-toggle .btn { min-height: 34px; font-size: 13px; border-radius: 6px; }
+.dashboard-page .performance-card-controls .form-select { border-color: #ccd7e8; }
+.dashboard-page .performance-card-context { font-size: 13px; line-height: 1.5; padding: 10px 20px; color: #44546f; }
+.dashboard-page .performance-card-total { font-size: 15px; font-variant-numeric: tabular-nums; }
+.dashboard-page [data-performance-list] { padding: 6px 20px !important; }
+.dashboard-page .performance-comparison-row { padding: 11px 0; }
+.dashboard-page .performance-row-heading > span:first-child { font-size: 14px; font-weight: 600; color: #172b4d; }
+.dashboard-page .performance-row-value { font-size: 15px; font-variant-numeric: tabular-nums; }
+.dashboard-page .performance-bar-track { height: 9px; margin-top: 8px; background: #e8edf5; }
+.dashboard-page .performance-row-note { margin-top: 6px; font-size: 12px; line-height: 1.5; color: #52647e; }
+.dashboard-page .performance-more-button { min-height: 34px; font-size: 13px; border-radius: 7px; background: #fff; }
+.dashboard-page .dashboard-trend-card { border: 1px solid #dfe6f1; border-radius: 14px; box-shadow: 0 3px 12px #17356707; margin-bottom: 24px; }
+.dashboard-page .dashboard-trend-header { padding: 18px 22px !important; background: #fff; }
+.dashboard-page .dashboard-trend-header h3 { font-size: 18px; line-height: 1.4; }
+.dashboard-page .dashboard-trend-header p { font-size: 13px; color: #52647e !important; }
+.dashboard-page .dashboard-trend-body { padding: 18px 22px !important; }
+.dashboard-page .progress-trend-chart { min-height: 230px; gap: 12px; padding-top: 8px; }
+.dashboard-page .progress-trend-item { grid-template-rows: 24px 165px 24px; gap: 8px; }
+.dashboard-page .progress-trend-bar-track { height: 165px; border-color: #dfe6f1; background: #f7f9fc; }
+.dashboard-page .progress-trend-bar { background: linear-gradient(180deg, #f06e7d, #d94b60); border-radius: 5px 5px 0 0; }
+.dashboard-page .progress-trend-value { font-size: 13px; line-height: 20px; font-variant-numeric: tabular-nums; }
+.dashboard-page .progress-trend-label { color: #44546f; font-size: 13px; line-height: 20px; }
+.dashboard-page .progress-trend-toggle .btn { min-height: 36px; font-size: 13px; }
+.dashboard-page .dashboard-trend-legend { font-size: 13px; line-height: 1.6; color: #52647e; gap: 12px !important; }
+.dashboard-page .dashboard-trend-legend .legend-swatch { background: #d94b60 !important; }
+.dashboard-page #sidebar { background: linear-gradient(180deg, #1d439a, #193877); }
+.dashboard-page #sidebar nav a, .dashboard-page #sidebar nav summary { font-size: 14px; }
+.dashboard-page #sidebar > div:first-child p { color: #d5e4ff; font-size: 12px; line-height: 1.6; text-align: center; }
+.dashboard-page #appHeader { box-shadow: 0 1px 0 #dfe6f1; }
+.dashboard-page .modal-content { border-radius: 14px; }
+.dashboard-page .modal-title { font-size: 20px; }
+.dashboard-page .modal-body table { font-size: 14px; }
+.dashboard-page button:focus-visible, .dashboard-page a:focus-visible { outline: 3px solid #8aadea; outline-offset: 3px; }
+.dashboard-page .form-select:focus { border-color: #5683d8 !important; box-shadow: 0 0 0 3px #245ac418 !important; }
+@media (max-width: 1199px) { .dashboard-page .performance-dropdown-controls { margin-left: 0; }.dashboard-page .performance-card-controls { align-items: flex-start; }.dashboard-page .performance-card-header { align-content: center; } }
+@media (max-width: 767px) {
+    .dashboard-page .dashboard-main { padding: 18px !important; }
+    .dashboard-page .dashboard-heading h2 { font-size: 25px; }
+    .dashboard-page #dashboardFilterForm { width: 100%; }
+    .dashboard-page #dashboardFilterForm > div { flex: 1 1 145px; align-items: stretch !important; flex-direction: column; gap: 6px !important; }
+    .dashboard-page #dashboardFilterForm .form-select { width: 100% !important; min-width: 0 !important; }
+    .dashboard-page .dashboard-summary-grid { gap: 12px; }
+    .dashboard-page .dashboard-summary-card { min-height: 185px; padding: 16px; }
+    .dashboard-page .performance-card-header { padding: 14px 16px; }
+    .dashboard-page .performance-card-controls { padding: 12px 16px; }
+    .dashboard-page .performance-card-context { padding: 10px 16px; }
+    .dashboard-page [data-performance-list] { padding-inline: 16px !important; }
+    .dashboard-page .performance-measure-control { flex-basis: auto; }
+    .dashboard-page .dashboard-trend-header, .dashboard-page .dashboard-trend-body { padding: 16px !important; }
+    .dashboard-page .progress-trend-chart { grid-template-columns: repeat(12, minmax(52px, 1fr)); overflow-x: auto; }
+    .dashboard-page .progress-trend-chart.is-quarterly { grid-template-columns: repeat(4, minmax(54px, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) { .dashboard-page .dashboard-summary-card, .dashboard-page .performance-bar, .dashboard-page .progress-trend-bar { transition: none !important; transform: none !important; } }
