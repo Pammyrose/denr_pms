@@ -2,9 +2,9 @@
 
 ## Purpose
 
-This document defines the user experience, workbook format, parsing rules, validation, persistence, security, and extension requirements for importing physical targets from Microsoft Excel into the DENR-CAR Performance Management System (PMS).
+This document defines the user experience, workbook format, parsing rules, validation, persistence, security, and extension requirements for importing physical targets, physical accomplishments, and recognized financial blocks from Microsoft Excel into the DENR-CAR Performance Management System (PMS).
 
-The import feature converts a sector workbook into the same PAP hierarchy, indicator assignments, office rows, and consolidated physical-target records used by manual entry.
+The import feature converts a sector workbook into PAP hierarchy, indicator assignments, office rows, and shared performance records. All eleven sectors use `PhysicalExcelUploadController`; sector-specific upload controllers are no longer used by the routes.
 
 ## Current Scope
 
@@ -13,16 +13,16 @@ Excel import is currently implemented for:
 - **GASS** through the `GASS` worksheet and the shared `PhysicalExcelUploadController`
 - **STO** through the `STO` worksheet and the shared `PhysicalExcelUploadController`
 - **ENF** through either the `ENF` or `NRE&RP` worksheet and the shared `PhysicalExcelUploadController`
-- **PA** through either the `PA` or `Biodiv` worksheet and `PaExcelUploadController`
-- **ENGP** through the combined `E-NGP +Soilcon` worksheet and `EngpExcelUploadController` (the Soil Conservation section is excluded)
-- **Lands** through the `LANDS` worksheet and `LandsExcelUploadController`
-- **Soilcon** through the Soil Conservation section of the combined `E-NGP +Soilcon` worksheet and `SoilconExcelUploadController`
-- **NRA** through the `NRA` worksheet and `NraExcelUploadController`
-- **PARIA** through the `PARIA` worksheet and `PariaExcelUploadController`
-- **COBB** through the `COBB` worksheet and `CobbExcelUploadController`
-- **Continuing** through the `CONTINUING` worksheet and `ContinuingExcelUploadController`
+- **PA** through `PA` or `Biodiv`
+- **ENGP** through `ENGP`, `E-NGP +Soilcon -rev`, or `E-NGP +Soilcon`, excluding the Soil Conservation section
+- **Lands** through `LANDS` or `Lands (NEP)`
+- **Soilcon** through the Soil Conservation section of `E-NGP +Soilcon -rev` or `E-NGP +Soilcon`
+- **NRA** through `NRA`
+- **PARIA** through `PARIA`
+- **COBB** through `COBB`
+- **Continuing** through `CONTINUING`
 
-The importer can write either **physical targets** or **physical accomplishments**. A GASS import also writes the workbook's **financial targets** from AB–AR and **financial accomplishments** from BN–CD. It does not import accomplishment remarks, users, or audit history from the workbook.
+The importer accepts **target**, **accomplishment**, or **both**. Without an explicit mode, a nonzero value in a mapped physical accomplishment period selects **both**; otherwise the mode is **target**. Recognized financial target and accomplishment blocks are imported for the selected sector, once per request. The importer does not import accomplishment remarks, users, or audit history from the workbook.
 
 Import and preview routes are currently inside administrator-protected sector route groups. Upload controls must be rendered only for roles that can successfully call those routes.
 
@@ -35,7 +35,7 @@ Upload button and hidden file input
 Asynchronous preview request
               |
               v
-Sector Excel upload controller
+Shared sector-configured PhysicalExcelUploadController
               |
               v
 SimpleXlsxReader
@@ -50,7 +50,7 @@ Sector parser
 |-- detects PAP hierarchy
 |-- joins continuation text
 |-- resolves indicators and offices
-|-- reads physical target periods
+|-- reads selected physical periods and recognized financial blocks
 `-- builds preview rows and warnings
               |
               v
@@ -62,7 +62,8 @@ Transactional import request
 |-- create/reuse PAP hierarchy
 |-- create/reuse indicator
 |-- synchronize indicator offices
-`-- upsert physical targets
+|-- replace Excel-marked rows for the selected physical kinds
+`-- persist physical rows and recognized financial blocks
               |
               v
 Redirect with success/error feedback
@@ -72,7 +73,7 @@ Redirect with success/error feedback
 
 ### 1. Select a Workbook
 
-The sector toolbar keeps the existing **Upload Excel** button and hidden file input configured with `accept=".xlsx"`. The server detects an accomplishment workbook from the Physical Accomplishment header and numeric values in AV–BL; otherwise it imports Targets. The form includes:
+The sector toolbar keeps the existing **Upload Excel** button and hidden file input configured with `accept=".xlsx"`. The server maps the period headers and selects both physical kinds when mapped accomplishment cells contain nonzero values; otherwise it imports targets. The form includes:
 
 - A CSRF token
 - The selected reporting year
@@ -127,7 +128,9 @@ Both preview and confirmed import must apply the same server-side rules.
 | Maximum size | 51,200 KB (50 MB) |
 | `year` | Optional integer |
 | Year range | 2000–2099 |
-| `import_type` | Optional explicit `target` or `accomplishment`; when omitted, the server detects the populated accomplishment block |
+| `import_type` | Optional explicit `target`, `accomplishment`, or `both`; omitted mode selects `both` when mapped accomplishment cells contain nonzero values, otherwise `target` |
+
+If `year` is omitted, the current controller defaults to 2026. This differs from manual performance-entry and export validation, which accept years through 2100.
 
 Browser `accept` filtering is only a convenience. The server-side file validation is authoritative.
 
@@ -143,6 +146,13 @@ The workbook must contain a worksheet whose name matches the importing sector:
 | STO | `STO` |
 | ENF | `ENF` or `NRE&RP` |
 | PA | `PA` or `Biodiv` |
+| ENGP | `ENGP`, `E-NGP +Soilcon -rev`, or `E-NGP +Soilcon` |
+| Lands | `LANDS` or `Lands (NEP)` |
+| Soilcon | `E-NGP +Soilcon -rev` or `E-NGP +Soilcon` |
+| NRA | `NRA` |
+| PARIA | `PARIA` |
+| COBB | `COBB` |
+| Continuing | `CONTINUING` |
 
 Worksheet matching is case-insensitive. A missing or unreadable worksheet causes preview/import failure.
 
@@ -165,10 +175,10 @@ The table below describes the official template layout. The importer does not as
 | I–Y | Physical target periods | Parsed into monthly, quarterly, and annual values |
 | AV–BL | Physical accomplishment periods | Parsed only for an accomplishment import |
 | AA | Financial target expense class | Used by the workbook layout; not stored as a separate dimension |
-| AB–AR | Financial target periods | Imported with GASS office rows into `financial_target` |
+| AB–AR | Financial target periods | Recognized blocks import into `financial_target` for the selected sector |
 | AS | Workbook financial-target reference total | Not persisted; AR is the periodized grand total |
 | BM | Financial accomplishment expense class | Used by the workbook layout; not stored as a separate dimension |
-| BN–CD | Financial accomplishment periods | Imported with GASS office rows into `financial_accomplishment` |
+| BN–CD | Financial accomplishment periods | Recognized blocks import into `financial_accomplishment` for the selected sector |
 
 ### Physical Period Mapping
 
@@ -202,15 +212,15 @@ For accomplishment imports, every resolved office listed in the workbook is reta
 | BC | Q2 | BK | Q4 |
 | BL | Annual total |  |  |
 
-An accomplishment import is accepted only when the worksheet header identifies the Physical Accomplishment block in column AV. This prevents unrelated notes or extended template columns from being written as accomplishments. When BL is zero or absent, the annual accomplishment is calculated as `Q1 + Q2 + Q3 + Q4`.
+An accomplishment import requires a recognizable Physical Accomplishment period header. AV–BL describes the reference layout; header discovery also supports moved columns. When the mapped annual value is zero or absent, the annual accomplishment is calculated as `Q1 + Q2 + Q3 + Q4`.
 
 ### Financial Target Period Mapping
 
-GASS imports map AB–AR to January, February, March, Q1, and the same repeating month/quarter sequence through Q4 and annual total. Non-numeric and Excel error values are treated as zero. When AR is zero or absent, annual total falls back to `Q1 + Q2 + Q3 + Q4`. Financial rows use the same sector, year, office, PAP row, and indicator identity as their physical row, and CAR/province totals are stored in the existing JSON total fields.
+Recognized financial target blocks in any supported sector map the discovered columns to January, February, March, Q1, and the repeating month/quarter sequence through annual total. AB–AR is the reference layout. Non-numeric and Excel error values become zero; an absent or zero annual value falls back to `Q1 + Q2 + Q3 + Q4`. Financial rows use the same sector, year, office, PAP row, and indicator identity as their physical row, with CAR/province totals in JSON total fields.
 
 ### Financial Accomplishment Period Mapping
 
-GASS imports map BN–CD to January, February, March, Q1, and the same repeating month/quarter sequence through Q4 and annual total. Non-numeric and Excel error values are treated as zero. When CD is zero or absent, annual total falls back to `Q1 + Q2 + Q3 + Q4`. The rows use the same sector, year, office, PAP row, and indicator identity as their corresponding physical row, and CAR/province totals are stored in the existing JSON total fields.
+Recognized financial accomplishment blocks follow the same discovered period mapping and identity rules. BN–CD is the reference layout. Non-numeric and Excel error values become zero; an absent or zero annual value falls back to `Q1 + Q2 + Q3 + Q4`. In `both` mode financial blocks are processed only on the first physical pass.
 
 ## XLSX Reader Behavior
 
@@ -228,7 +238,7 @@ The reader:
 - Uses a generator so rows can be processed incrementally
 - Skips rows marked hidden when requested
 
-STO, ENF, and PA parsing use style-aware rows because bold/fill information can help distinguish hierarchy headers. GASS currently uses normalized cell values without requiring style metadata.
+The shared parser reads style-aware rows for every sector. Sector configuration and worksheet content determine whether bold/fill information influences hierarchy detection. Source order is retained for configured sectors through PAP detail metadata.
 
 ## Parser Model
 
@@ -356,7 +366,10 @@ A successful preview returns HTTP `200` with this shape:
   "success": true,
   "preview": {
     "year": 2026,
+    "import_type": "both",
     "imported": 0,
+    "target_imported": 0,
+    "accomplishment_imported": 0,
     "skipped": 0,
     "parsed_rows": 0,
     "shown_rows": 0,
@@ -368,7 +381,7 @@ A successful preview returns HTTP `200` with this shape:
 }
 ```
 
-`imported` in preview represents the number of office target rows that would be imported; preview itself performs no database write.
+`imported` sums the physical target and accomplishment office-row counts; preview itself performs no database write. In `both` mode, displayed rows are merged by source row, indicator, and hierarchy, so `shown_rows` need not equal the summed `parsed_rows`. Combined warnings are deduplicated before the 80-detail cap and `warning_count` reflects that deduplicated list.
 
 Each item in `rows` may contain:
 
@@ -391,8 +404,8 @@ For each valid block, it:
 1. Creates or reuses the PAP hierarchy.
 2. Creates or reuses the indicator.
 3. Synchronizes the indicator/PAP/office assignment.
-4. Upserts one `PhysicalTarget` or `PhysicalAccomplishment` per resolved office according to `import_type`.
-5. For GASS workbooks containing the Financial Target or Financial Accomplishment header, upserts the corresponding `FinancialTarget` and/or `FinancialAccomplishment` office row.
+4. Persists one `PhysicalTarget` and/or `PhysicalAccomplishment` per resolved office according to `import_type`.
+5. For recognized Financial Target or Financial Accomplishment blocks, upserts the corresponding `FinancialTarget` and/or `FinancialAccomplishment` office row for the selected sector.
 6. Stores CAR and group totals.
 7. Marks the physical row with `imported_from = "excel"`.
 
@@ -402,9 +415,9 @@ The consolidated target identity is:
 sector + year + office_id + row_id + indicator_id
 ```
 
-Re-importing the same identity updates the existing selected physical entry. It must not create a duplicate. The importing user becomes the record's current `user_id`.
+Before each selected physical pass, the importer deletes existing `imported_from = "excel"` rows for that sector, year, and physical kind, then rebuilds the imported set. This is replacement behavior: Excel rows absent from the new workbook are removed. Matching non-Excel identities can be updated by persistence. Obsolete imported PAP rows without remaining physical references are cleaned up; hierarchy source order is reset on the first pass. The importing user becomes the current record's `user_id`.
 
-An exception anywhere in the confirmed import rolls back PAP, indicator, assignment, physical-entry, and GASS financial changes made by that request. A target import never changes physical accomplishments, and an accomplishment import never changes physical targets.
+An exception in the transactional import rolls back resets and PAP, indicator, assignment, physical, and financial changes. Explicit `target` leaves physical accomplishments untouched; explicit `accomplishment` leaves physical targets untouched; `both` replaces both imported physical sets. Recognized financial blocks can be written in any mode.
 
 ## Audit Behavior
 
@@ -428,7 +441,7 @@ An exception anywhere in the confirmed import rolls back PAP, indicator, assignm
 - Roll back the database transaction.
 - Redirect to the originating sector page.
 - Display an error alert.
-- Log detailed server context for administrators while keeping production user messages free of stack traces, SQL, filesystem paths, and secrets.
+- Current parsing/import failure messages append the exception message to the preview JSON or redirect feedback. Sanitizing these messages is a remaining hardening requirement, not an implemented guarantee.
 
 ## Security Requirements
 
@@ -440,7 +453,7 @@ An exception anywhere in the confirmed import rolls back PAP, indicator, assignm
 - Do not execute formulas, VBA, macros, external links, or embedded objects.
 - Escape all preview text before inserting it into the DOM.
 - Use database transactions and parameterized persistence operations.
-- Do not expose temporary upload paths or raw exception details in production.
+- Hardening requirement: sanitize parser exceptions before returning them; current error handlers append exception messages as described above.
 - Enforce reasonable processing limits to protect memory, CPU, and audit storage.
 - Retain the original workbook only if an approved records-management policy explicitly requires it.
 
@@ -450,8 +463,8 @@ New sector support must follow the same preview-first contract.
 
 ### Required Backend Work
 
-1. Add preview and import named routes inside the authorized sector group.
-2. Create a sector upload controller or extract the common importer into reusable services.
+1. Add preview and import named routes inside the authorized sector group, pointing to `PhysicalExcelUploadController` with a sector default.
+2. Extend the shared controller's sector configuration instead of creating a duplicate sector upload controller.
 3. Define the required worksheet name and default sector title.
 4. Reuse `SimpleXlsxReader`.
 5. Map workbook hierarchy to the canonical PAP fields.
@@ -493,7 +506,7 @@ Only these should normally vary:
 - Approved office aliases
 - Sector-specific exceptions for known official templates
 
-Prefer extracting shared parser, preview, and persistence services over copying the GASS/STO controllers. Sector-specific parsing rules should be isolated behind a small strategy interface so fixes do not drift across importers.
+The current implementation centralizes parsing, preview, and persistence in `PhysicalExcelUploadController` with sector configuration. Future extraction into focused services should preserve that shared behavior and the existing named-route contracts.
 
 ## Verification Checklist
 
@@ -502,7 +515,7 @@ Prefer extracting shared parser, preview, and persistence services over copying 
 - A valid `.xlsx` under 50 MB is accepted.
 - Other file types and oversized files are rejected.
 - A missing sector worksheet fails cleanly.
-- Hidden rows and pre-row-10 headers are skipped.
+- Hidden rows are skipped; data starts after the discovered final period-header row.
 
 ### Preview
 
@@ -532,14 +545,14 @@ Prefer extracting shared parser, preview, and persistence services over copying 
 ### Persistence
 
 - Confirmed import creates the expected PAPs, indicators, assignments, and selected target/accomplishment entries.
-- A repeated import updates matching identities without duplicates.
+- A repeated import replaces the selected sector/year Excel-marked physical set without duplicate identities, including removal of stale imported rows.
 - All imported physical rows contain `imported_from = "excel"`.
 - Importing accomplishments does not change target records, and importing targets does not change accomplishment records.
-- One failing block rolls back the entire confirmed import.
+- `both` mode imports both physical sets and processes financial blocks once; one failing block rolls back the entire confirmed import.
 - GASS financial targets map AB–AR correctly and upsert without duplicate identities.
 - GASS financial accomplishments map BN–CD correctly and upsert without duplicate identities.
 - The sector page renders imported records using the canonical PAP layout.
 
 ---
 
-[Back to Project Documentation](global.md) | [Frontend Specification](frontend.md) | [Backend Specification](backend.md)
+[Back to Project Documentation](README.md) | [Frontend Specification](frontend.md) | [Backend Specification](backend.md)

@@ -21,7 +21,7 @@ PMS is implemented as a Laravel modular monolith. Web pages and JSON-based inter
 - **Language:** PHP 8.2+
 - **Framework:** Laravel 12
 - **Persistence:** Eloquent ORM and Laravel query builder
-- **Database:** MySQL-compatible relational database
+- **Database:** Configurable SQLite or MySQL-compatible relational database; tests use in-memory SQLite
 - **Authentication:** Laravel session authentication
 - **Authorization:** Route middleware plus controller-level office scoping
 - **Caching:** Laravel cache facade
@@ -44,7 +44,7 @@ app/
 |   |   |-- UserController.php              # User administration
 |   |   |-- HistoryController.php           # Audit-history queries
 |   |   |-- {Sector}Controller.php          # Sector PAP and indicator workflows
-|   |   `-- *ExcelUploadController.php      # GASS/STO import workflows
+|   |   `-- PhysicalExcelUploadController.php # Shared importer for all eleven sectors
 |   `-- Middleware/
 |       |-- EnsureUserHasRole.php            # Role allow-list enforcement
 |       `-- LogFieldEdits.php                # Mutation audit trail
@@ -53,12 +53,17 @@ app/
 |   |-- Ppa.php, Indicator.php, RecordType.php
 |   |-- PhysicalTarget.php
 |   |-- PhysicalAccomplishment.php
-|   |-- FinancialInput.php
+|   |-- FinancialTarget.php
+|   |-- FinancialAccomplishment.php
+|   |-- AccomplishmentSubmission.php
 |   |-- EditHistory.php
 |   |-- LegacyPhysical*.php                 # Compatibility layer
 |   `-- Concerns/
 |       `-- UsesConsolidatedPhysicalTable.php
-|-- Providers/
+|-- Services/                               # Email challenges, period locks, approvals, notification counts
+|-- Jobs/                                   # Encrypted queued login-code delivery
+|-- Mail/                                   # Login-code mail message
+|-- Providers/                              # Migration registration and view data composition
 `-- Support/
     `-- SimpleXlsxReader.php
 
@@ -109,14 +114,17 @@ All application routes are defined in `routes/web.php` and use Laravel's web mid
 
 | Category | Representative routes | Responsibility |
 | --- | --- | --- |
-| Authentication | `GET /`, `POST /login`, `POST /logout` | Session creation and termination |
+| Authentication | `GET /`, `POST /login`, `GET/POST /login/code`, `POST /login/code/resend`, `GET /login/code/status`, `POST /logout` | Password check, queued email verification, delivery status, and logout |
 | Dashboard | `GET /dashboard` | Role-aware performance overview |
 | Sector pages | `GET /{sector}_physical/{program?}` | Physical and financial performance views |
 | Shared physical input | `POST /{sector}_physical/targets/store` and `accomplishments/store` | Office-scoped grid persistence |
 | Shared financial input | `POST /financial-inputs/{sector}/store` | Financial grid persistence |
 | Administration | `/admin/{sector}_physical/...` | PAP, indicator, row, and import management |
 | Users | `/user` and `/users/...` | Administrator user management |
-| Audit history | `GET /history` | Administrator audit review |
+| Audit history | `GET /history` | Administrator/regional review and PENRO service-area history |
+| Change requests | `GET /accomplishment-change-requests`, `PATCH /accomplishment-change-requests/{submission}/approve` or `/decline` | Administrator/regional review of locked-month corrections |
+| Notifications | `GET /notifications`, `GET /notifications/count` | Submitter request tracking and role-specific notification counts |
+| WFP export | `GET /wfp/export/{sector}` | Office-scoped XLSX download for the viewing roles |
 
 Route names are part of the application contract. They are used by Blade templates, JavaScript endpoint configuration, redirects, and the audit middleware; renaming a route requires updating all consumers.
 
@@ -124,7 +132,7 @@ Route names are part of the application contract. They are used by Blade templat
 
 ### Authentication
 
-- Login creates a Laravel-authenticated session.
+- Password validation creates a pending email challenge; only successful email-code verification creates a Laravel-authenticated session.
 - Protected routes require the `auth` middleware.
 - Logout invalidates the session and regenerates the CSRF token.
 - User passwords use Laravel's hashed cast and must never be logged or returned in responses.
@@ -150,6 +158,8 @@ Role authorization is supplemented by record-level office scoping. The base cont
 - Reject submitted physical or financial entries for another office
 
 Route middleware protects the operation type; controller rules protect the data scope. Both checks are required.
+
+PENRO physical-page reads include the assigned provincial office and configured child offices in its service area. Writes remain restricted to the account's assigned office. PENRO target-write routes are enabled; `user` and `cenro` targets are read-only. `super-admin` follows the regional-office helper behavior rather than the `admin`-only mutation groups.
 
 ## Controller Responsibilities
 
@@ -206,7 +216,17 @@ Sector controllers load the relevant type, PAP hierarchy, assigned indicators, p
 6. Sends changed locked periods to the reason-backed approval queue while upserting ordinary entries inside a database transaction.
 7. Returns created, updated, and queued counts as JSON.
 
-Targets and accomplishments share the same write workflow. Accomplishments additionally accept remarks and locked-period change reasons.
+Targets and accomplishments share validation and identity conventions. Accomplishments additionally accept remarks and locked-period change reasons; only accomplishments enter the correction approval workflow.
+
+### Locked-Period Changes and Notifications
+
+`AccomplishmentPeriodLock` compares submitted and stored monthly values using `Asia/Manila`. All months in earlier reporting years are locked; in the current year, months before the current month are locked; future reporting years have no locked months. A numeric difference greater than `0.0000001` counts as a change.
+
+For office accounts, an entry containing changed locked months requires `change_reason` (maximum 1,000 characters) and is queued in `accomplishment_submissions`. The whole entry skips the immediate write, including any current-month changes in that same entry. Entries without locked-month changes save directly. Administrators and regional-office roles may edit locked months directly.
+
+`AccomplishmentSubmissionService::queueLockedChange` replaces the pending payload for the same submitter, type, sector, office, PAP row, indicator, and year. Approval locks the pending submission in a transaction, applies only its changed months to the current accomplishment record, merges the affected aggregate values, and recalculates quarterly and annual totals. Physical approval also applies remarks and clears `imported_from`. Financial totals are cumulative; physical non-cumulative totals use the most frequent value with the larger value winning ties, while semi-cumulative annual totals use the maximum quarter.
+
+Only administrator/regional roles review requests. Decline requires `review_notes` of at most 1,000 characters and does not apply the proposed accomplishment. Re-reviewing a completed request returns HTTP `409`. Decisions clear `user_read_at`; the submitter's paginated notifications page marks the displayed decisions read. `NotificationCountService` supplies unread decision counts to office users, pending review counts to reviewers, and a version hash through `/notifications/count` and the sidebar composer.
 
 ### Shared Financial Input Controller
 
@@ -218,21 +238,23 @@ The user controller validates account details, role values, office requirements,
 
 ### Excel Import Controllers
 
-GASS and STO provide preview and import endpoints. Import processing must:
+All eleven sectors use `PhysicalExcelUploadController` with sector defaults on the named preview/import routes. Sector configuration selects worksheet names, aliases, hierarchy rules, and section boundaries. Import processing must:
 
 - Validate file type, file size, and reporting year
 - Parse the workbook without executing embedded content
 - Normalize headings, office labels, numbers, and hierarchy levels
 - Preview detected data and warnings before permanent import
 - Resolve or create valid PAP and indicator references
-- Upsert targets using the same consolidated physical schema
+- Import targets, accomplishments, or both into the consolidated physical schema; auto-detection selects both when mapped accomplishment cells contain nonzero values
+- Import recognized financial target and accomplishment blocks for the selected sector once per request
+- Replace existing Excel-marked physical rows for the selected sector, year, and import kind inside the transaction
 - Return understandable errors for invalid or unsupported sheets
 
 Import preview requests are intentionally excluded from edit-history logging because they do not persist business data.
 
 ### Physical Performance Excel Export
 
-Authorized administrator, regional-office, and PENRO users can generate a sector-specific workbook. The existing P/A/P, performance-indicator, and office columns are retained while the physical-performance section follows the accomplishment-report layout: annual, selected-quarter, and to-date physical targets; selected-quarter and to-date accomplishments; and to-date and annual accomplishment percentages. The report freezes its eleven-row heading, uses Excel percentage number formats, and applies the authenticated user's office scope.
+All viewing roles can generate a sector-specific workbook through `WfpExcelExportController`, subject to office scope. `GassUiReport::rows` supplies report rows for every sector and `SimpleXlsxWriter::writePerformanceReport` produces the download. The official-template branch is currently disabled by an empty `OFFICIAL_TEMPLATE_SECTORS` list. The report includes physical and financial performance sections, percentage formats, and an eleven-row frozen heading. Downloads use no-cache headers and remove the temporary workbook after sending. Export year validation accepts 2000 through 2100.
 
 ## Data Model
 
@@ -248,7 +270,8 @@ Type / Sector
       `-- Indicator
           |-- PhysicalTarget
           |-- PhysicalAccomplishment
-          `-- FinancialInput
+          |-- FinancialTarget
+          `-- FinancialAccomplishment
 
 User
   `-- EditHistory
@@ -266,7 +289,7 @@ sector + year + office_id + row_id + indicator_id
 
 ### Performance Periods
 
-The three consolidated performance tables store:
+The four shared performance tables (`physical_targets`, `physical_accomplishments`, `financial_target`, and `financial_accomplishment`) store:
 
 - Monthly values: `jan` through `dec`
 - Quarterly values: `q1` through `q4`
@@ -293,7 +316,7 @@ Legacy sector model class names remain available through:
 - `LegacyPhysicalBuilder`, which maps legacy column names such as `years` and `office_ids`
 - `LegacyPhysicalTarget` and `LegacyPhysicalAccomplishment`, which point old sector models at the consolidated tables
 
-New backend code should prefer `PhysicalTarget`, `PhysicalAccomplishment`, and `FinancialInput`. The compatibility layer should be removed only after all sector controllers and reports no longer depend on legacy model contracts.
+New backend code should prefer `PhysicalTarget`, `PhysicalAccomplishment`, `FinancialTarget`, and `FinancialAccomplishment`. The compatibility layer should be removed only after all sector controllers and reports no longer depend on legacy model contracts.
 
 ## Validation and Persistence
 
@@ -350,6 +373,7 @@ Use conventional HTTP status codes:
 - `403` for role or office denial
 - `404` for an unknown sector or missing resource
 - `422` for validation or unavailable configuration
+- `429` for authentication throttling and `409` for an already-reviewed submission
 - `500` only for unexpected server failures
 
 Do not expose stack traces, SQL, secrets, or sensitive request data in production responses.
@@ -434,4 +458,4 @@ Backend changes should verify:
 
 ---
 
-[Back to Project Documentation](global.md) | [Architecture Specification](architecture.md) | [Frontend Specification](frontend.md)
+[Back to Project Documentation](README.md) | [Project Overview](global.md) | [Architecture Specification](architecture.md) | [Frontend Specification](frontend.md)

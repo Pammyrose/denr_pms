@@ -55,6 +55,7 @@ resources/
 |   |-- users/
 |   |   |-- index.blade.php                 # Office/user dashboard
 |   |   `-- {sector}/                       # PENRO/CENRO/user screens
+|   |-- penro/                             # PENRO dashboard, sector views, and reviewer template
 |   `-- components/
 |       |-- nav.blade.php                   # Top navigation
 |       |-- sidebar.blade.php               # Role-aware side navigation
@@ -115,11 +116,11 @@ Each physical-performance page is divided into partials so that the large data g
 `-- {sector}_physical_modal_scripts.blade.php
 ```
 
-Supported GASS and STO screens also include Excel-upload partials.
+Administrator screens for all eleven sectors include Excel-upload controls using the shared preview-first import workflow.
 
 ## Canonical PAP Performance Layout
 
-This section is the normative layout contract for every sector. GASS, STO, ENF, PA, ENGP, LANDS, SOILCON, NRA, PARIA, COBB, and Continuing screens must produce the same table structure and behavior in the `admin`, `regional`, and `users` view namespaces. Sector names, route names, data, permissions, and import availability may differ; the visual hierarchy and DOM contract must not.
+This section is the normative layout contract for every sector. GASS, STO, ENF, PA, ENGP, LANDS, SOILCON, NRA, PARIA, COBB, and Continuing screens must produce the same table structure and behavior in the `admin`, `regional`, `penro`, and `users` view namespaces. Sector names, route names, data, permissions, and import availability may differ; the visual hierarchy and DOM contract must not.
 
 ### Complete Page Layout
 
@@ -403,12 +404,14 @@ Long-term fixes should be extracted into shared Blade components and shared Java
 ### Login
 
 - Accepts user credentials and submits them to the Laravel login route.
+- Redirects valid credentials to the email-code screen; the session remains signed out until the six-digit code is verified.
+- Provides resend controls and polls `/login/code/status` for queued, sent, failed, or expired delivery status for up to three minutes.
 - Displays authentication and validation errors with dismissible alerts.
 - Uses the session and CSRF protection supplied by Laravel.
 
 ### Dashboard
 
-- Filters dashboard content by sector and reporting year.
+- Filters dashboard content by office, sector, and reporting year within the authorized scope.
 - Displays overall performance cards, PAP and indicator counts, and progress values.
 - Provides sector and office performance rankings.
 - Opens accessible modal tables for PAP and indicator lists.
@@ -436,7 +439,15 @@ Long-term fixes should be extracted into shared Blade components and shared Java
 
 - User management allows administrators to add, edit, and remove user accounts.
 - The history screen presents audited changes, including actor, role, module, action, fields, and time.
-- Both screens are available only through administrator-protected routes.
+- User management is administrator-only. History is available to administrator, regional-office, and PENRO roles; PENRO history is restricted to actors assigned to offices in its service area.
+
+### Locked-Period Requests and Notifications
+
+- Changes to past accomplishment months require a reason for office accounts. The lock uses the date in `Asia/Manila` and applies to both physical and financial accomplishments.
+- A queued row remains pending until approved. A successful HTTP response can include `pending_approval`, `created_count`, `updated_count`, and `queued_count`; the UI must distinguish a request sent for review from a saved accomplishment.
+- Administrator/regional reviewers use the change-request screen to inspect targets and proposed values, approve a pending request, or decline it with a reason.
+- User, CENRO, and PENRO accounts track their own pending, approved, and declined submissions at `/notifications`. Displayed decisions are marked read.
+- Sidebar badges receive role-specific counts from the shared notification service and `/notifications/count`.
 
 ## Shared Components
 
@@ -519,12 +530,12 @@ Frontend code must display validation failures clearly and must not assume a suc
 
 ## Role-Aware User Experience
 
-The frontend has three major view namespaces, but these are presentation boundaries rather than security controls:
+The frontend has four role-specific view namespaces (`admin`, `regional`, `penro`, and `users`). These are presentation boundaries; routes and controller checks enforce access:
 
 - **Administrator:** system-wide dashboard, PAP and indicator management, user management, imports, and edit history
 - **Regional:** regional overview and cross-office performance visibility permitted by the backend
 - **Users/CENRO:** office-scoped accomplishment entry. Targets remain visible but read-only. Current and future accomplishment months save immediately; passed-month corrections require a reason and Regional Office/administrator approval.
-- **PENRO:** office-scoped accomplishment entry and tracking for its own locked-period change requests. PENRO cannot approve or decline requests.
+- **PENRO:** service-area physical-page visibility, target and accomplishment entry for its assigned office, scoped history, and tracking for its own locked-period change requests. PENRO cannot approve or decline requests.
 - **Regional/Administrator:** cross-office locked-period change queue with approve and decline actions.
 
 All authorization must still be enforced by routes, middleware, and controllers. Hiding a button or navigation item is not sufficient authorization.
@@ -567,4 +578,4 @@ Before merging a frontend change, verify:
 
 ---
 
-[Back to Project Documentation](global.md) | [Architecture Specification](architecture.md)
+[Back to Project Documentation](README.md) | [Project Overview](global.md) | [Architecture Specification](architecture.md)
