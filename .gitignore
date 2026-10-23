@@ -15,6 +15,7 @@
 /.zed
 /auth.json
 /templates/
+/resources/templates/
 /docs/
 /node_modules
 /public/build
