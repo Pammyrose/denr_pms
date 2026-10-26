@@ -192,6 +192,10 @@ The application recognizes administrator, regional-office, general user, PENRO, 
 
 ## Deployment View
 
+`.env.example` and `.htaccess` files are ignored by Git and maintained locally. Provision the environment configuration and Apache rewrite rules separately when setting up a fresh checkout or deployment.
+
+The root `templates/` and `docs/` folders and `resources/templates/` are also ignored and maintained locally; they are not included in fresh clones. Versioned project specifications remain in `specs/`.
+
 ```text
 Client browser
       |
