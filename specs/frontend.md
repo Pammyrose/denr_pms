@@ -10,6 +10,12 @@ Role dashboards share `public/css/dashboard.css`, scoped to `dashboard-page`. It
 
 Account sign-in and email verification use the shared `auth-compact` layout with matching card dimensions, form widths, and spacing, fitting common desktop and phone viewports without scrolling. Short phones use a reduced brand header and omit the decorative footer. The layout keeps overflow accessible for unusually small viewports, zoom, or additional error messages instead of hiding controls.
 
+The shared authentication panel footer right-aligns the DENR-CAR copyright text. It remains visible on taller mobile screens; short phones continue to omit the footer.
+
+The sign-in account-help text is left-aligned beneath the form.
+
+Email verification places the Return to sign in action directly below the email icon, above the heading. The action remains available when compact layouts hide the icon. The resend button has no spam-folder or resend-frequency helper text beneath it.
+
 Sign-in and email-code verification share `auth/layout.blade.php` and the responsive `public/css/auth.css` theme. Desktop screens pair a DENR identity panel and inline Cordillera landscape illustration with the form; mobile screens use a compact brand header. The two-step progress indicator shows the current authentication step. `public/js/auth.js` provides an accessible password visibility toggle; forms and verification continue to work without JavaScript. All branding and assets are local, with no external font or image requests.
 
 PMS uses a server-rendered frontend built with Laravel Blade. Controllers prepare the page data, Blade templates generate the initial HTML, and browser JavaScript adds interactive tables, filters, charts, modals, asynchronous saves, and user preferences.

@@ -3,7 +3,13 @@
 @section('title', 'Verify sign-in')
 
 @section('content')
-    <div class="code-icon"><i class="fa-regular fa-envelope-open" aria-hidden="true"></i></div>
+    <div class="verification-actions">
+        <div class="code-icon"><i class="fa-regular fa-envelope-open" aria-hidden="true"></i></div>
+        <form action="{{ route('logout') }}" method="POST">
+            @csrf
+            <button class="cancel-button" type="submit"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Return to Account</button>
+        </form>
+    </div>
     <h2>Check your email</h2>
     <p class="intro">Enter the six-digit code from your account's email to finish signing in.</p>
     <div class="alert {{ ($deliveryStatus ?? 'queued') === 'failed' ? '' : 'alert-success' }}" role="status" aria-live="polite" data-email-delivery="{{ $deliveryStatus ?? 'queued' }}" data-status-url="{{ route('login.code.status') }}">
@@ -37,10 +43,5 @@
     <form action="{{ route('login.code.resend') }}" method="POST" class="resend-form">
         @csrf
         <button class="button button-secondary" type="submit">Send another code</button>
-    </form>
-    <p class="field-help">Check your spam folder. Resend available once per minute.</p>
-    <form action="{{ route('logout') }}" method="POST">
-        @csrf
-        <button class="cancel-button" type="submit"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Return to sign in</button>
     </form>
 @endsection

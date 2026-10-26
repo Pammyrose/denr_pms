@@ -17,7 +17,7 @@ button, input { font: inherit; }button { cursor: pointer; }a { color: var(--acce
 input { display: block; width: 100%; height: 51px; padding: 12px 15px; border: 1px solid #dce4f1; border-radius: 8px; color: var(--ink); background: #f9fbff; font-size: 16px; transition: border-color .2s, box-shadow .2s; }input::placeholder { color: #52647e; opacity: 1; }input:focus { outline: none; border-color: #5683d8; box-shadow: 0 0 0 3px #245ac412; background: #fff; }input[aria-invalid=true] { border-color: #bd5c50; }.password-toggle { position: absolute; right: 5px; top: 5px; width: 41px; height: 41px; border: 0; border-radius: 5px; background: transparent; color: #697d9e; }.password-toggle:hover { background: #edf3ff; }
 .security-note { display: flex; align-items: flex-start; gap: 12px; padding: 14px; margin: 2px 0 22px; background: #f0f5ff; border: 1px solid #e3eafb; border-radius: 8px; }.security-note > i { font-size: 17px; color: #5278ba; margin-top: 3px; }.security-note strong { font-size: 14px; font-weight: 650; }.security-note p { margin: 4px 0 0; font-size: 14px; line-height: 1.65; color: var(--muted); }
 .button { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; min-height: 49px; padding: 12px 16px; font-size: 16px; font-weight: 600; border: 1px solid var(--accent); border-radius: 8px; text-decoration: none; transition: background .2s, box-shadow .2s; }.button-primary { color: #fff; background: var(--accent); }.button-primary:hover { background: #1c469d; box-shadow: 0 5px 15px #245ac425; }.button-primary i { font-size: 14px; }.button-secondary { color: var(--accent); background: #fff; border-color: #dce4f1; }.button-secondary:hover { background: #f0f5ff; }
-.account-help { text-align: center; margin: 23px 0 0; font-size: 14px; line-height: 1.7; color: var(--muted); }.account-help a { font-weight: 600; }.panel-footer { color: #4c5c76; font-size: 12px; padding-top: 18px; border-top: 1px solid #edf1f8; }.alert { padding: 12px 14px; border: 1px solid #e6b8b2; border-radius: 8px; background: #fff4f2; color: #8d352a; font-size: 15px; line-height: 1.65; margin-bottom: 20px; overflow-wrap: anywhere; }.alert ul { margin: 0; padding-left: 16px; }.alert-success { color: #245ac4; border-color: #c4d6f5; background: #f0f5ff; }.field-error { color: #9d4035; font-size: 14px; margin-top: 7px; }
+.account-help { text-align: center; margin: 23px 0 0; font-size: 12px; line-height: 1.7; color: var(--muted); }.account-help a { font-weight: 500; }.panel-footer { color: #4c5c76; font-size: 12px; padding-top: 18px; border-top: 1px solid #edf1f8; }.alert { padding: 12px 14px; border: 1px solid #e6b8b2; border-radius: 8px; background: #fff4f2; color: #8d352a; font-size: 15px; line-height: 1.65; margin-bottom: 20px; overflow-wrap: anywhere; }.alert ul { margin: 0; padding-left: 16px; }.alert-success { color: #245ac4; border-color: #c4d6f5; background: #f0f5ff; }.field-error { color: #9d4035; font-size: 14px; margin-top: 7px; }
 .code-icon { width: 52px; height: 52px; display: grid; place-items: center; border-radius: 14px; background: #edf3ff; color: var(--accent); font-size: 21px; margin-bottom: 20px; }.code-input { text-align: center; font-size: 28px; letter-spacing: 12px; padding-left: 24px; font-weight: 600; height: 62px; }.field-help { font-size: 14px; line-height: 1.7; color: var(--muted); margin: 10px 0 0; }.resend-form { margin-top: 13px; }.cancel-button { display: block; margin: 19px auto 0; padding: 8px; color: var(--muted); border: 0; background: none; font-size: 14px; }.cancel-button:hover { color: var(--accent); text-decoration: underline; }
 .button:disabled { cursor: wait; opacity: .8; }
 .button [hidden] { display: none !important; }
@@ -30,6 +30,8 @@ button:focus-visible, a:focus-visible { outline: 3px solid #87a9e6; outline-offs
 @media (max-width: 760px) { body { padding: 18px; }.auth-shell { max-width: 500px; grid-template-columns: 1fr; min-height: auto; border-radius: 18px; }.auth-story { padding: 24px; min-height: 150px; }.brand img { width: 48px; height: 48px; }.brand strong { font-size: 17px; }.brand p { font-size: 13px; }.story-copy { margin-top: 20px; }.eyebrow { margin: 0; font-size: 11px; }.story-copy h1, .story-description, .story-footer { display: none; }.landscape { height: 170px; width: 55%; left: auto; right: 0; bottom: -15px; opacity: .3; }.auth-panel { padding: 24px; }.auth-content { padding: 30px 0; max-width: none; }.sign-in-steps { margin-bottom: 25px; }.auth-content h2 { font-size: 30px; }.panel-footer { font-size: 11px; } }
 @media (max-width: 360px) { body { padding: 10px; }.auth-panel { padding: 20px; }.access-label { font-size: 12px; }.panel-footer span:last-child { max-width: 120px; text-align: right; }.code-input { letter-spacing: 8px; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
+
+.panel-footer { justify-content: flex-end; text-align: right; }
 
 /* Keep both sign-in steps the same size without clipping messages or keyboard focus. */
 .auth-compact { padding: 16px; }
@@ -48,9 +50,12 @@ button:focus-visible, a:focus-visible { outline: 3px solid #87a9e6; outline-offs
 .auth-compact .button { min-height: 44px; padding: 10px 14px; font-size: 15px; }
 .auth-compact .resend-form { margin-top: 8px; }
 .auth-compact .cancel-button { margin-top: 8px; padding: 6px; }
+.verification-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-bottom: 10px; }
+.auth-compact .verification-actions .code-icon { margin-bottom: 0; flex-shrink: 0; }
+.auth-compact .verification-actions .cancel-button { margin: 0; }
 .auth-compact .panel-footer { padding-top: 10px; font-size: 11px; }
 .auth-compact .security-note { padding: 12px; margin: 0 0 16px; }
-.auth-compact .account-help { margin-top: 14px; }
+.auth-compact .account-help { margin-top: 14px; text-align: right; }
 @media (min-width: 761px) {
     .auth-compact .auth-shell { min-height: min(700px, calc(100svh - 32px)); }
     .auth-compact .auth-story { padding: 32px; }
@@ -69,7 +74,6 @@ button:focus-visible, a:focus-visible { outline: 3px solid #87a9e6; outline-offs
     .auth-compact .story-copy { display: none; }
     .auth-compact .auth-panel { padding: 16px 20px; }
     .auth-compact .panel-top { display: none; }
-    .auth-compact .panel-footer span:last-child { display: none; }
     .auth-compact .code-icon { display: none; }
 }
 @media (max-width: 760px) and (max-height: 700px) {

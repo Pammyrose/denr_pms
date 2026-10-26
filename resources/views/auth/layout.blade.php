@@ -47,7 +47,7 @@
                 </ol>
                 @yield('content')
             </div>
-            <div class="panel-footer"><span>&copy; {{ date('Y') }} DENR-CAR</span><span>Working together. Moving forward.</span></div>
+            <div class="panel-footer"><span>&copy; {{ date('Y') }} DENR-CAR</span></div>
         </section>
     </main>
 </body>
