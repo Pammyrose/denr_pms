@@ -60,7 +60,12 @@ class PhysicalInputController extends Controller
 
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
-            'program' => ['nullable', 'string', 'max:255'],
+            'program' => ['required_with:subprogram,subsubprogram,subsubsubprogram,subsubsubsubprogram,subsubsubsubsubprogram', 'nullable', 'string', 'max:255'],
+            'subprogram' => ['required_with:subsubprogram,subsubsubprogram,subsubsubsubprogram,subsubsubsubsubprogram', 'nullable', 'string', 'max:150'],
+            'subsubprogram' => ['required_with:subsubsubprogram,subsubsubsubprogram,subsubsubsubsubprogram', 'nullable', 'string', 'max:150'],
+            'subsubsubprogram' => ['required_with:subsubsubsubprogram,subsubsubsubsubprogram', 'nullable', 'string', 'max:150'],
+            'subsubsubsubprogram' => ['required_with:subsubsubsubsubprogram', 'nullable', 'string', 'max:150'],
+            'subsubsubsubsubprogram' => ['nullable', 'string', 'max:150'],
             'project' => ['nullable', 'string', 'max:255'],
             'activities' => ['nullable', 'string', 'max:255'],
             'subactivities' => ['nullable', 'string', 'max:255'],
@@ -130,6 +135,17 @@ class PhysicalInputController extends Controller
             }
 
             abort_unless(isset($detailsByOrder[1]), 422, 'The PAP hierarchy is incomplete and cannot be edited.');
+
+            $programExtensions = [];
+            foreach (['subprogram', 'subsubprogram', 'subsubsubprogram', 'subsubsubsubprogram', 'subsubsubsubsubprogram'] as $field) {
+                if (array_key_exists($field, $validated)) {
+                    $programExtensions[$field] = trim((string) $validated[$field]) ?: null;
+                    $detailsByOrder[1]->{$field} = $programExtensions[$field];
+                }
+            }
+            if ($programExtensions !== []) {
+                DB::table('ppa_details')->where('id', $detailsByOrder[1]->id)->update($programExtensions);
+            }
 
             ksort($detailsByOrder);
             $parentDetailId = null;
@@ -222,6 +238,11 @@ class PhysicalInputController extends Controller
                 'row_id' => $targetRowId > 0 ? $targetRowId : $row,
                 'title' => (string) ($validated['title'] ?? ''),
                 'program' => (string) ($validated['program'] ?? ''),
+                'subprogram' => (string) ($detailsByOrder[1]->subprogram ?? ''),
+                'subsubprogram' => (string) ($detailsByOrder[1]->subsubprogram ?? ''),
+                'subsubsubprogram' => (string) ($detailsByOrder[1]->subsubsubprogram ?? ''),
+                'subsubsubsubprogram' => (string) ($detailsByOrder[1]->subsubsubsubprogram ?? ''),
+                'subsubsubsubsubprogram' => (string) ($detailsByOrder[1]->subsubsubsubsubprogram ?? ''),
                 'project' => (string) ($validated['project'] ?? ''),
                 'activities' => (string) ($validated['activities'] ?? ''),
                 'subactivities' => (string) ($validated['subactivities'] ?? ''),

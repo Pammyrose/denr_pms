@@ -19,6 +19,7 @@ use App\Models\PhysicalTarget;
 use App\Models\Soilcon_Indicator;
 use App\Models\Sto_Indicator;
 use App\Support\SimpleXlsxReader;
+use App\Support\ExcelProgramHierarchy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -200,6 +201,8 @@ class PhysicalExcelUploadController extends Controller
 
     private int $excelDataStartRow = 1;
 
+    private array $excelSortingWarningCache = [];
+
     /**
      * Sector-specific layout hints are enabled only when the worksheet data
      * actually identifies that layout. A renamed worksheet can therefore be
@@ -218,6 +221,7 @@ class PhysicalExcelUploadController extends Controller
         $this->usesSectorSpecificExcelRules = true;
         $this->excelColumnLayout = [];
         $this->excelDataStartRow = 1;
+        $this->excelSortingWarningCache = [];
 
         return $this;
     }
@@ -302,12 +306,18 @@ class PhysicalExcelUploadController extends Controller
                     ->where('ppa.types_id', $typeId)
                     ->where('ppa.record_type_id', $recordTypeId)
                     ->where('details.column_order', $index + 1)
+                    ->when($index === 0, function ($query) use ($papData) {
+                        foreach (array_slice(ExcelProgramHierarchy::FIELDS, 2) as $field) {
+                            $column = DB::connection()->getQueryGrammar()->wrap('details.'.$field);
+                            $query->whereRaw("LOWER(TRIM(COALESCE({$column}, ''))) = ?", [strtolower(trim((string) ($papData[$field] ?? '')))]);
+                        }
+                    })
                     ->when(
                         $parentDetailId === null,
                         fn ($query) => $query->whereNull('details.parent_id'),
                         fn ($query) => $query->where('details.parent_id', $parentDetailId)
                     )
-                    ->whereRaw('LOWER(TRIM(ppa.name)) = ?', [strtolower($level['name'])])
+                    ->whereRaw('LOWER(TRIM('.DB::connection()->getQueryGrammar()->wrap('ppa.name').')) = ?', [strtolower($level['name'])])
                     ->when($index === 0 && $papYear !== null, function ($query) use ($papYear) {
                         $query->where('ppa.year', $papYear);
                     })
@@ -339,6 +349,11 @@ class PhysicalExcelUploadController extends Controller
                     'created_at' => now(),
                     'updated_at' => now(),
                 ];
+                if ($index === 0) {
+                    foreach (array_slice(ExcelProgramHierarchy::FIELDS, 2) as $field) {
+                        $detailData[$field] = trim((string) ($papData[$field] ?? '')) ?: null;
+                    }
+                }
                 if ($sourceOrder > 0) {
                     $detailData['source_order'] = $sourceOrder;
                 }
@@ -447,6 +462,14 @@ class PhysicalExcelUploadController extends Controller
         return $columnCache[$column];
     }
 
+    protected function prepareExcelProcessing(): void
+    {
+        $limit = (int) ini_get('max_execution_time');
+        if ($limit > 0 && $limit < 300) {
+            set_time_limit(300);
+        }
+    }
+
     public function importExcel(Request $request)
     {
         $this->selectSectorFromRequest($request);
@@ -458,12 +481,13 @@ class PhysicalExcelUploadController extends Controller
         ]);
 
         $year = (int) ($validated['year'] ?? $request->input('year', 2026));
+        $this->prepareExcelProcessing();
         $filePath = $request->file('excel_file')->getRealPath();
-        $sheetName = $this->resolveExcelSheetName($filePath);
 
         DB::beginTransaction();
 
         try {
+            $sheetName = $this->resolveExcelSheetName($filePath);
             $importType = $this->resolvePhysicalImportType(
                 $filePath,
                 $sheetName,
@@ -513,10 +537,11 @@ class PhysicalExcelUploadController extends Controller
         ]);
 
         $year = (int) ($validated['year'] ?? $request->input('year', 2026));
+        $this->prepareExcelProcessing();
         $filePath = $request->file('excel_file')->getRealPath();
-        $sheetName = $this->resolveExcelSheetName($filePath);
 
         try {
+            $sheetName = $this->resolveExcelSheetName($filePath);
             $importType = $this->resolvePhysicalImportType(
                 $filePath,
                 $sheetName,
@@ -571,6 +596,7 @@ class PhysicalExcelUploadController extends Controller
         $importedOfficeIdsByRowId = [];
         $currentProgram = null;
         $currentProgramMeta = [];
+        $currentProgramHierarchy = [];
         $currentHeaders = [];
         $currentBlock = null;
         $standaloneHeaderContext = null;
@@ -719,7 +745,7 @@ class PhysicalExcelUploadController extends Controller
             $currentBlock = null;
         };
 
-        $startPlaceholderBlock = function (int $sourceRow, array $targetValues = [], array $financialValues = [], array $financialAccomplishmentValues = []) use (&$currentBlock, &$currentHeaders, &$currentProgram, &$currentProgramMeta) {
+        $startPlaceholderBlock = function (int $sourceRow, array $targetValues = [], array $financialValues = [], array $financialAccomplishmentValues = []) use (&$currentBlock, &$currentHeaders, &$currentProgram, &$currentProgramMeta, &$currentProgramHierarchy) {
             if (empty($currentHeaders)) {
                 return;
             }
@@ -727,6 +753,7 @@ class PhysicalExcelUploadController extends Controller
             $currentBlock = [
                 'source_row' => $sourceRow,
                 'title' => $currentProgram ?: $this->excelConfig('default_title'),
+                'program_hierarchy' => $currentProgramHierarchy,
                 'program' => $currentProgramMeta[0] ?? 'N/A',
                 'project' => $currentProgramMeta[1] ?? 'N/A',
                 'headers' => $currentHeaders,
@@ -772,6 +799,32 @@ class PhysicalExcelUploadController extends Controller
             $financialAccomplishmentValues = $this->financialAccomplishmentValuesFromExcelRow($row);
             $hasTargets = $this->hasAnyTargetValue($targetValues);
 
+            $explicitHeading = $indicatorText === '' && $locationName === '' && ! $hasTargets
+                ? ExcelProgramHierarchy::heading($papText)
+                : null;
+            $explicitValues = $explicitHeading ?? ($row['__program_hierarchy'] ?? []);
+            if ($explicitValues !== []) {
+                $context = $currentProgramHierarchy ?: [
+                    'title' => $currentProgram ?: $this->excelConfig('default_title'),
+                    'program' => $currentProgramMeta[0] ?? 'N/A',
+                ];
+                $nextHierarchy = ExcelProgramHierarchy::merge($context, $explicitValues, $explicitHeading !== null);
+                if ($nextHierarchy !== $currentProgramHierarchy) {
+                    $flushBlock();
+                    $currentProgramHierarchy = $nextHierarchy;
+                    $currentProgram = $nextHierarchy['title'] ?? $this->excelConfig('default_title');
+                    $currentProgramMeta = [$nextHierarchy['program'] ?? 'N/A', 'N/A'];
+                    $currentHeaders = [];
+                    $currentParentOfficeId = null;
+                    $standaloneHeaderContext = null;
+                    $activeUnlocatedSectionParentHeaders = null;
+                    $skipDuplicateSummaryProgram = false;
+                }
+                if ($explicitHeading !== null) {
+                    continue;
+                }
+            }
+
             if ($papText === '' && $indicatorText === '' && $locationName === '') {
                 $skipped++;
 
@@ -779,7 +832,7 @@ class PhysicalExcelUploadController extends Controller
             }
 
             $isStyledPapHeader = $this->isStyledStoPapHeaderRow($papText, $row, $rowStyles, $importType);
-            if ($this->isStoProgramHeader($papText, $row) || $isStyledPapHeader) {
+            if ($currentProgramHierarchy === [] && ($this->isStoProgramHeader($papText, $row) || $isStyledPapHeader)) {
                 if ($isStyledPapHeader && $currentProgram !== null && empty($currentHeaders) && $currentBlock === null) {
                     $currentProgram = $this->isStoSheetHeaderText($currentProgram)
                         ? $papText
@@ -835,6 +888,41 @@ class PhysicalExcelUploadController extends Controller
             if ($importType === 'accomplishment' && $officeId !== null) {
                 $hasTargets = true;
             }
+            if ($currentProgramHierarchy !== [] && $papText !== '' && $indicatorText === '' && ! $hasTargets && $locationName === '') {
+                $flushBlock();
+                $this->pushExcelHierarchyHeader($currentHeaders, $papText);
+                continue;
+            }
+            if ($currentProgramHierarchy !== [] && $indicatorText !== '' && $officeId !== null
+                && ($currentBlock === null || $papText !== ''
+                    || strcasecmp($this->joinExcelFragments($currentBlock['indicator_parts']), $indicatorText) !== 0)) {
+                $flushBlock();
+                $currentBlock = [
+                    'source_row' => $rowNumber,
+                    'title' => $currentProgram,
+                    'program_hierarchy' => $currentProgramHierarchy,
+                    'program' => $currentProgramMeta[0] ?? 'N/A',
+                    'project' => 'N/A',
+                    'headers' => $currentHeaders,
+                    'activity_parts' => $papText !== '' ? [$papText] : [],
+                    'indicator_parts' => [$indicatorText],
+                    'car_totals' => [],
+                    'group_totals' => [],
+                    'office_rows' => [[
+                        'office_id' => $officeId, 'office_name' => $locationName,
+                        'targets' => $targetValues,
+                        'financial_targets' => $financialValues ?? [],
+                        'financial_accomplishments' => $financialAccomplishmentValues ?? [],
+                    ]],
+                ];
+                $this->applyRoAsCarTotal($currentBlock, $locationName, $targetValues);
+                if ($this->isParentOfficeRow($locationName)) {
+                    $currentParentOfficeId = $officeId;
+                    $currentBlock['group_totals']['group-1'] = $targetValues;
+                }
+                continue;
+            }
+
             $isCarRow = strcasecmp($locationName, 'CAR') === 0;
             $isRoRow = $this->isRoOfficeRow($locationName);
             $headingDepth = $this->excelHeadingDepth($papText);
@@ -1080,6 +1168,7 @@ class PhysicalExcelUploadController extends Controller
                 $currentBlock = [
                     'source_row' => $rowNumber,
                     'title' => $currentProgram ?: $this->excelConfig('default_title'),
+                    'program_hierarchy' => $currentProgramHierarchy,
                     'program' => $currentProgramMeta[0] ?? 'N/A',
                     'project' => $currentProgramMeta[1] ?? 'N/A',
                     'headers' => $currentHeaders,
@@ -1118,6 +1207,7 @@ class PhysicalExcelUploadController extends Controller
                     $currentBlock = [
                         'source_row' => $rowNumber,
                         'title' => $currentProgram ?: $this->excelConfig('default_title'),
+                        'program_hierarchy' => $currentProgramHierarchy,
                         'program' => $currentProgramMeta[0] ?? 'N/A',
                         'project' => $currentProgramMeta[1] ?? 'N/A',
                         'headers' => $currentHeaders,
@@ -1138,6 +1228,7 @@ class PhysicalExcelUploadController extends Controller
                 $currentBlock = [
                     'source_row' => $rowNumber,
                     'title' => $currentProgram ?: $this->excelConfig('default_title'),
+                    'program_hierarchy' => $currentProgramHierarchy,
                     'program' => $currentProgramMeta[0] ?? 'N/A',
                     'project' => $currentProgramMeta[1] ?? 'N/A',
                     'headers' => $currentHeaders,
@@ -1195,6 +1286,7 @@ class PhysicalExcelUploadController extends Controller
                 $currentBlock = [
                     'source_row' => $rowNumber,
                     'title' => $currentProgram ?: $this->excelConfig('default_title'),
+                    'program_hierarchy' => $currentProgramHierarchy,
                     'program' => $currentProgramMeta[0] ?? 'N/A',
                     'project' => $currentProgramMeta[1] ?? 'N/A',
                     'headers' => $currentHeaders,
@@ -1230,6 +1322,7 @@ class PhysicalExcelUploadController extends Controller
                 $currentBlock = [
                     'source_row' => $rowNumber,
                     'title' => $currentProgram ?: $this->excelConfig('default_title'),
+                    'program_hierarchy' => $currentProgramHierarchy,
                     'program' => $currentProgramMeta[0] ?? 'N/A',
                     'project' => $currentProgramMeta[1] ?? 'N/A',
                     'headers' => $currentHeaders,
@@ -1278,6 +1371,7 @@ class PhysicalExcelUploadController extends Controller
                 $currentBlock = [
                     'source_row' => $rowNumber,
                     'title' => $currentProgram ?: $this->excelConfig('default_title'),
+                    'program_hierarchy' => $currentProgramHierarchy,
                     'program' => $currentProgramMeta[0] ?? 'N/A',
                     'project' => $currentProgramMeta[1] ?? 'N/A',
                     'headers' => $currentHeaders,
@@ -1513,6 +1607,7 @@ class PhysicalExcelUploadController extends Controller
         $officeMap = $this->getOfficeImportMap();
         $currentProgram = null;
         $currentProgramMeta = [];
+        $currentProgramHierarchy = [];
         $currentHeaders = [];
         $currentBlock = null;
         $standaloneHeaderContext = null;
@@ -1612,6 +1707,7 @@ class PhysicalExcelUploadController extends Controller
                     'title' => $papData['title'] ?? '',
                     'program' => $papData['program'] ?? '',
                     'project' => $papData['project'] ?? '',
+                    ...array_intersect_key($papData, array_flip(array_slice(ExcelProgramHierarchy::FIELDS, 2))),
                     'hierarchy' => $hierarchy,
                     'indicator' => $indicatorName,
                     'offices' => $officeNames,
@@ -1627,7 +1723,7 @@ class PhysicalExcelUploadController extends Controller
             $currentBlock = null;
         };
 
-        $startPlaceholderPreviewBlock = function (int $sourceRow, array $targetValues = []) use (&$currentBlock, &$currentHeaders, &$currentProgram, &$currentProgramMeta) {
+        $startPlaceholderPreviewBlock = function (int $sourceRow, array $targetValues = []) use (&$currentBlock, &$currentHeaders, &$currentProgram, &$currentProgramMeta, &$currentProgramHierarchy) {
             if (empty($currentHeaders)) {
                 return;
             }
@@ -1635,6 +1731,7 @@ class PhysicalExcelUploadController extends Controller
             $currentBlock = [
                 'source_row' => $sourceRow,
                 'title' => $currentProgram ?: $this->excelConfig('default_title'),
+                'program_hierarchy' => $currentProgramHierarchy,
                 'program' => $currentProgramMeta[0] ?? 'N/A',
                 'project' => $currentProgramMeta[1] ?? 'N/A',
                 'headers' => $currentHeaders,
@@ -1676,6 +1773,32 @@ class PhysicalExcelUploadController extends Controller
             $targetValues = $this->physicalValuesFromExcelRow($row, $importType);
             $hasTargets = $this->hasAnyTargetValue($targetValues);
 
+            $explicitHeading = $indicatorText === '' && $locationName === '' && ! $hasTargets
+                ? ExcelProgramHierarchy::heading($papText)
+                : null;
+            $explicitValues = $explicitHeading ?? ($row['__program_hierarchy'] ?? []);
+            if ($explicitValues !== []) {
+                $context = $currentProgramHierarchy ?: [
+                    'title' => $currentProgram ?: $this->excelConfig('default_title'),
+                    'program' => $currentProgramMeta[0] ?? 'N/A',
+                ];
+                $nextHierarchy = ExcelProgramHierarchy::merge($context, $explicitValues, $explicitHeading !== null);
+                if ($nextHierarchy !== $currentProgramHierarchy) {
+                    $flushBlock();
+                    $currentProgramHierarchy = $nextHierarchy;
+                    $currentProgram = $nextHierarchy['title'] ?? $this->excelConfig('default_title');
+                    $currentProgramMeta = [$nextHierarchy['program'] ?? 'N/A', 'N/A'];
+                    $currentHeaders = [];
+                    $currentParentOfficeId = null;
+                    $standaloneHeaderContext = null;
+                    $activeUnlocatedSectionParentHeaders = null;
+                    $skipDuplicateSummaryProgram = false;
+                }
+                if ($explicitHeading !== null) {
+                    continue;
+                }
+            }
+
             if ($papText === '' && $indicatorText === '' && $locationName === '') {
                 $skipped++;
 
@@ -1683,7 +1806,7 @@ class PhysicalExcelUploadController extends Controller
             }
 
             $isStyledPapHeader = $this->isStyledStoPapHeaderRow($papText, $row, $rowStyles, $importType);
-            if ($this->isStoProgramHeader($papText, $row) || $isStyledPapHeader) {
+            if ($currentProgramHierarchy === [] && ($this->isStoProgramHeader($papText, $row) || $isStyledPapHeader)) {
                 if ($isStyledPapHeader && $currentProgram !== null && empty($currentHeaders) && $currentBlock === null) {
                     $currentProgram = $this->isStoSheetHeaderText($currentProgram)
                         ? $papText
@@ -1739,6 +1862,41 @@ class PhysicalExcelUploadController extends Controller
             if ($importType === 'accomplishment' && $officeId !== null) {
                 $hasTargets = true;
             }
+            if ($currentProgramHierarchy !== [] && $papText !== '' && $indicatorText === '' && ! $hasTargets && $locationName === '') {
+                $flushBlock();
+                $this->pushExcelHierarchyHeader($currentHeaders, $papText);
+                continue;
+            }
+            if ($currentProgramHierarchy !== [] && $indicatorText !== '' && $officeId !== null
+                && ($currentBlock === null || $papText !== ''
+                    || strcasecmp($this->joinExcelFragments($currentBlock['indicator_parts']), $indicatorText) !== 0)) {
+                $flushBlock();
+                $currentBlock = [
+                    'source_row' => $rowNumber,
+                    'title' => $currentProgram,
+                    'program_hierarchy' => $currentProgramHierarchy,
+                    'program' => $currentProgramMeta[0] ?? 'N/A',
+                    'project' => 'N/A',
+                    'headers' => $currentHeaders,
+                    'activity_parts' => $papText !== '' ? [$papText] : [],
+                    'indicator_parts' => [$indicatorText],
+                    'car_totals' => [],
+                    'group_totals' => [],
+                    'office_rows' => [[
+                        'office_id' => $officeId, 'office_name' => $locationName,
+                        'targets' => $targetValues,
+                        'financial_targets' => $financialValues ?? [],
+                        'financial_accomplishments' => $financialAccomplishmentValues ?? [],
+                    ]],
+                ];
+                $this->applyRoAsCarTotal($currentBlock, $locationName, $targetValues);
+                if ($this->isParentOfficeRow($locationName)) {
+                    $currentParentOfficeId = $officeId;
+                    $currentBlock['group_totals']['group-1'] = $targetValues;
+                }
+                continue;
+            }
+
             $isCarRow = strcasecmp($locationName, 'CAR') === 0;
             $isRoRow = $this->isRoOfficeRow($locationName);
             $headingDepth = $this->excelHeadingDepth($papText);
@@ -1978,6 +2136,7 @@ class PhysicalExcelUploadController extends Controller
                 $currentBlock = [
                     'source_row' => $rowNumber,
                     'title' => $currentProgram ?: $this->excelConfig('default_title'),
+                    'program_hierarchy' => $currentProgramHierarchy,
                     'program' => $currentProgramMeta[0] ?? 'N/A',
                     'project' => $currentProgramMeta[1] ?? 'N/A',
                     'headers' => $currentHeaders,
@@ -2012,6 +2171,7 @@ class PhysicalExcelUploadController extends Controller
                     $currentBlock = [
                         'source_row' => $rowNumber,
                         'title' => $currentProgram ?: $this->excelConfig('default_title'),
+                        'program_hierarchy' => $currentProgramHierarchy,
                         'program' => $currentProgramMeta[0] ?? 'N/A',
                         'project' => $currentProgramMeta[1] ?? 'N/A',
                         'headers' => $currentHeaders,
@@ -2030,6 +2190,7 @@ class PhysicalExcelUploadController extends Controller
                 $currentBlock = [
                     'source_row' => $rowNumber,
                     'title' => $currentProgram ?: $this->excelConfig('default_title'),
+                    'program_hierarchy' => $currentProgramHierarchy,
                     'program' => $currentProgramMeta[0] ?? 'N/A',
                     'project' => $currentProgramMeta[1] ?? 'N/A',
                     'headers' => $currentHeaders,
@@ -2083,6 +2244,7 @@ class PhysicalExcelUploadController extends Controller
                 $currentBlock = [
                     'source_row' => $rowNumber,
                     'title' => $currentProgram ?: $this->excelConfig('default_title'),
+                    'program_hierarchy' => $currentProgramHierarchy,
                     'program' => $currentProgramMeta[0] ?? 'N/A',
                     'project' => $currentProgramMeta[1] ?? 'N/A',
                     'headers' => $currentHeaders,
@@ -2114,6 +2276,7 @@ class PhysicalExcelUploadController extends Controller
                 $currentBlock = [
                     'source_row' => $rowNumber,
                     'title' => $currentProgram ?: $this->excelConfig('default_title'),
+                    'program_hierarchy' => $currentProgramHierarchy,
                     'program' => $currentProgramMeta[0] ?? 'N/A',
                     'project' => $currentProgramMeta[1] ?? 'N/A',
                     'headers' => $currentHeaders,
@@ -2156,6 +2319,7 @@ class PhysicalExcelUploadController extends Controller
                 $currentBlock = [
                     'source_row' => $rowNumber,
                     'title' => $currentProgram ?: $this->excelConfig('default_title'),
+                    'program_hierarchy' => $currentProgramHierarchy,
                     'program' => $currentProgramMeta[0] ?? 'N/A',
                     'project' => $currentProgramMeta[1] ?? 'N/A',
                     'headers' => $currentHeaders,
@@ -2377,9 +2541,14 @@ class PhysicalExcelUploadController extends Controller
 
     private function previewExcelSortingWarnings(string $filePath, string $sheetName): array
     {
+        $cacheKey = $filePath.'|'.$sheetName;
+        if (array_key_exists($cacheKey, $this->excelSortingWarningCache)) {
+            return $this->excelSortingWarningCache[$cacheKey];
+        }
         $reader = new SimpleXlsxReader;
         $warnings = [];
         $currentProgram = $sheetName;
+        $currentProgramHierarchy = [];
         $currentRoman = '';
         $seenNumericRoots = [];
         $lastSequences = [];
@@ -2407,12 +2576,31 @@ class PhysicalExcelUploadController extends Controller
                 continue;
             }
 
+            $explicitHeading = $this->cleanExcelText($row['B'] ?? '') === ''
+                && $this->cleanExcelText($row['C'] ?? '') === ''
+                ? ExcelProgramHierarchy::heading($papText)
+                : null;
+            $explicitValues = $explicitHeading ?? ($row['__program_hierarchy'] ?? []);
+            if ($explicitValues !== []) {
+                $context = $currentProgramHierarchy ?: ['title' => $currentProgram];
+                $nextHierarchy = ExcelProgramHierarchy::merge($context, $explicitValues, $explicitHeading !== null, false);
+                if ($nextHierarchy !== $currentProgramHierarchy || $explicitHeading !== null) {
+                    $currentProgramHierarchy = $nextHierarchy;
+                    $currentProgram = json_encode($nextHierarchy);
+                    $currentRoman = '';
+                    $seenNumericRoots = [];
+                    $lastSequences = [];
+                }
+                if ($explicitHeading !== null) {
+                    continue;
+                }
+            }
             if ($papText === '') {
                 continue;
             }
 
             $isStyledPapHeader = $this->isStyledStoPapHeaderRow($papText, $row, $rowStyles);
-            if ($this->isStoProgramHeader($papText, $row) || $isStyledPapHeader) {
+            if ($currentProgramHierarchy === [] && ($this->isStoProgramHeader($papText, $row) || $isStyledPapHeader)) {
                 $currentProgram = $isStyledPapHeader && $currentProgram !== $sheetName && ! $this->isStoSheetHeaderText($currentProgram)
                     ? $this->joinExcelFragments([$currentProgram, $papText])
                     : $papText;
@@ -2527,7 +2715,7 @@ class PhysicalExcelUploadController extends Controller
             }
         }
 
-        return $warnings;
+        return $this->excelSortingWarningCache[$cacheKey] = $warnings;
     }
 
     private function excelHeadingPreviewInfo(string $text): ?array
@@ -2776,6 +2964,23 @@ class PhysicalExcelUploadController extends Controller
 
     private function papDataFromExcelBlock(array $block, int $year): array
     {
+        $pap = $this->legacyPapDataFromExcelBlock($block, $year);
+        $explicit = $block['program_hierarchy'] ?? [];
+        if ($explicit !== []) {
+            $explicit = ExcelProgramHierarchy::merge([], $explicit);
+            $pap['title'] = $explicit['title'] ?? $pap['title'];
+            $pap['program'] = $explicit['program'] ?? 'N/A';
+            $pap['project'] = 'N/A';
+        }
+        foreach (array_slice(ExcelProgramHierarchy::FIELDS, 2) as $field) {
+            $pap[$field] = $explicit[$field] ?? null;
+        }
+
+        return $pap;
+    }
+
+    private function legacyPapDataFromExcelBlock(array $block, int $year): array
+    {
         $headers = array_values(array_filter($block['headers'] ?? []));
         $activityName = $this->joinExcelFragments($block['activity_parts'] ?? []);
 
@@ -2873,7 +3078,7 @@ class PhysicalExcelUploadController extends Controller
         $matchingRowId = DB::table('ppa as candidate')
             ->join('indicators as candidate_indicator', 'candidate_indicator.id', '=', 'candidate.indicator_id')
             ->where('candidate.ppa_details_id', $existingRow->ppa_details_id)
-            ->whereRaw('LOWER(TRIM(candidate_indicator.name)) = ?', [$normalizedIndicatorName])
+            ->whereRaw('LOWER(TRIM('.DB::connection()->getQueryGrammar()->wrap('candidate_indicator.name').')) = ?', [$normalizedIndicatorName])
             ->orderBy('candidate.id')
             ->value('candidate.id');
 
@@ -2955,7 +3160,7 @@ class PhysicalExcelUploadController extends Controller
                     ->orWhere('candidate.office_id', '')
                     ->orWhere('candidate.office_id', '[]');
             })
-            ->whereRaw("UPPER(TRIM(candidate.name)) IN ('N/A', 'NA')")
+            ->whereRaw("UPPER(TRIM(".DB::connection()->getQueryGrammar()->wrap('candidate.name').")) IN ('N/A', 'NA')")
             ->whereNotExists(function ($query) {
                 $query->selectRaw('1')
                     ->from('ppa_details as child_details')
@@ -3906,14 +4111,28 @@ class PhysicalExcelUploadController extends Controller
     private function configureExcelColumnLayoutFromRows(array $headerRows, string $sheetName = 'worksheet'): void
     {
         $coreColumns = [];
+        $programColumns = [];
+        $activityColumn = null;
         $sectionCandidates = [];
         $lastHeaderRow = 0;
 
         foreach ($headerRows as $rowNumber => $row) {
+            $hasIndicatorHeader = collect($row)->contains(
+                fn ($value) => str_contains($this->normalizeExcelHeader($value), 'PERFORMANCEINDICATOR')
+            );
             foreach ($row as $column => $value) {
                 $header = $this->normalizeExcelHeader($value);
                 if ($header === '') {
                     continue;
+                }
+
+                if ($hasIndicatorHeader) {
+                    $programField = ExcelProgramHierarchy::field((string) $value);
+                    if ($programField !== null) {
+                        $programColumns[$programField] = $column;
+                    } elseif ($header === 'ACTIVITY') {
+                        $activityColumn = $column;
+                    }
                 }
 
                 if ($this->matchesExcelCoreHeader($header, 'PROGRAMACTIVITYPROJECT', 'pap_header_aliases')) {
@@ -3936,6 +4155,11 @@ class PhysicalExcelUploadController extends Controller
                     ];
                 }
             }
+        }
+
+        if ($programColumns !== []) {
+            $coreColumns['program_hierarchy'] = $programColumns;
+            $coreColumns['pap'] ??= $activityColumn ?? '__empty_pap';
         }
 
         foreach (['pap', 'indicator', 'location'] as $requiredCoreColumn) {
@@ -4078,13 +4302,26 @@ class PhysicalExcelUploadController extends Controller
 
     private function normalizeExcelCoreColumns(array $row): array
     {
+        $sourceRow = $row;
+        $programValues = [];
+        foreach ($this->excelColumnLayout['program_hierarchy'] ?? [] as $field => $column) {
+            if (isset($sourceRow[$column]) && is_scalar($sourceRow[$column])) {
+                $value = $this->cleanExcelText($sourceRow[$column]);
+                if ($value !== '') {
+                    $programValues[$field] = $value;
+                }
+            }
+        }
         foreach (['pap' => 'A', 'indicator' => 'B', 'location' => 'C'] as $layoutKey => $canonicalColumn) {
             $sourceColumn = $this->excelColumnLayout[$layoutKey] ?? $canonicalColumn;
-            if (array_key_exists($sourceColumn, $row)) {
-                $row[$canonicalColumn] = $row[$sourceColumn];
+            if (array_key_exists($sourceColumn, $sourceRow)) {
+                $row[$canonicalColumn] = $sourceRow[$sourceColumn];
             } elseif ($sourceColumn !== $canonicalColumn) {
                 unset($row[$canonicalColumn]);
             }
+        }
+        if ($programValues !== []) {
+            $row['__program_hierarchy'] = $programValues;
         }
 
         return $row;
@@ -4112,6 +4349,9 @@ class PhysicalExcelUploadController extends Controller
         $headerParts = [];
 
         foreach ($reader->rows($filePath, $sheetName, true) as $rowNumber => $row) {
+            if ($layoutMarkers === [] && $rowNumber > 20) {
+                break;
+            }
             $row = $this->normalizeExcelCoreColumns($row);
             if ($rowNumber <= 20) {
                 $headerText = $this->cleanExcelText($row['A'] ?? '');
@@ -4548,6 +4788,8 @@ class PhysicalExcelUploadController extends Controller
                 $key = implode('|', [
                     (string) ($row['row'] ?? ''),
                     (string) ($row['indicator'] ?? ''),
+                    json_encode(array_intersect_key($row, array_flip(ExcelProgramHierarchy::FIELDS))),
+                    (string) ($row['project'] ?? ''),
                     json_encode($row['hierarchy'] ?? []),
                 ]);
 

@@ -134,6 +134,8 @@ If `year` is omitted, the current controller defaults to 2026. This differs from
 
 Browser `accept` filtering is only a convenience. The server-side file validation is authoritative.
 
+Preview and import raise a finite PHP execution limit below 300 seconds to 300 seconds before opening the workbook; unlimited or larger server limits are preserved. Worksheet-resolution errors use the normal preview JSON/import redirect error response. Layout detection stops after the first twenty rows when no sector markers require a longer scan. Sorting warnings are computed once per workbook/worksheet during a preview request and reused for target/accomplishment passes.
+
 ## Workbook Contract
 
 ### Worksheet
@@ -237,6 +239,8 @@ The reader:
 - Can expose bold and fill-style metadata
 - Uses a generator so rows can be processed incrementally
 - Skips rows marked hidden when requested
+- Advances directly between worksheet rows after parsing each row, avoiding another traversal of every cell node
+- Closes XML and ZIP readers when iteration finishes, fails, or stops early
 
 The shared parser reads style-aware rows for every sector. Sector configuration and worksheet content determine whether bold/fill information influences hierarchy detection. Source order is retained for configured sectors through PAP detail metadata.
 
@@ -279,7 +283,16 @@ The block is skipped when it has no matched office rows, has no usable indicator
 
 ## PAP Hierarchy Mapping
 
-The Excel hierarchy must map to the canonical PMS PAP fields in this order:
+### Extended Program Levels
+
+All sectors support Project, Program, and up to five optional nested program levels, matching the manual form. Existing workbooks retain their legacy heading and activity mapping. Extended levels must be identified explicitly, either by named columns on the Performance Indicator header row (Project, Program, Sub-program through Sub-sub-sub-sub-sub-program) or by standalone labeled PAP rows such as "Project: Watershed project", "Program: Environment", and "Sub-program: Forest protection". Hyphen and space variations and letter case are normalized. Named-column workbooks may retain the existing PAP column for activities, or use an Activity column instead.
+
+Blank hierarchy cells continue the current path. Changing a parent clears its deeper program levels before applying any values supplied on that row. Explicit labeled parent rows start a new branch even when the parent name repeats. A populated child requires every preceding program level. More than five nested program levels, missing parents, and program labels longer than 150 characters are rejected in preview and import. Explicit Project values are limited to 255 characters.
+
+The five program extension values are stored on the root ppa_details, included in preview rows, and displayed between Program and activities. Root reuse compares all five extension fields, so a legacy path without extensions cannot attach to a manual path with extensions. Repeated identical paths reuse their existing nodes. Physical and financial period mapping, office resolution, replacement rules, and transactions also apply to extended paths.
+
+
+Legacy workbook hierarchies map to the compatibility PMS fields below. The five optional program extension fields are root metadata and do not renumber these existing positions:
 
 ```text
 title
@@ -308,7 +321,7 @@ The import hierarchy must render according to the canonical PAP layout in `front
 
 ## Sorting Validation
 
-Preview performs a separate hierarchy-order check and reports warnings tied to Excel row numbers.
+Preview resolves Project, Program, and all five sub-program levels before checking letter or number sequences. Repeated named-column values keep the current sequence; changing a parent path resets the sequence for the new branch. Labeled hierarchy rows establish context and are not treated as numbered or lettered activities. The separate hierarchy-order check reports warnings tied to Excel row numbers.
 
 The checker detects:
 
@@ -386,7 +399,8 @@ A successful preview returns HTTP `200` with this shape:
 Each item in `rows` may contain:
 
 - `row`: source Excel row number
-- `title`, `program`, and `project`
+- `title` (Project), `program`, and legacy `project`
+- `subprogram`, `subsubprogram`, `subsubsubprogram`, `subsubsubsubprogram`, and `subsubsubsubsubprogram`
 - `hierarchy`: displayable Activity-through-level-8 path
 - `indicator`: normalized performance indicator
 - `offices`: matched office labels

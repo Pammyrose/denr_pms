@@ -77,31 +77,7 @@
                             P/A/P
                         </h4>
                         <div class="row g-3 mb-2">
-                            <div class="col-12 col-md-6">
-                                <label for="pap_title" class="form-label fw-bold small">Title</label>
-                                <input type="text" id="pap_title" class="form-control form-control-sm py-2"
-                                    style="font-size: 0.875rem;" list="pap_title_options" autocomplete="off" required>
-                                <datalist id="pap_title_options">
-                                    @foreach(($papTitles ?? []) as $existingTitle)
-                                        <option value="{{ $existingTitle }}"></option>
-                                    @endforeach
-                                </datalist>
-                            </div>
-
-
-                            <div class="col-12 col-md-6">
-                                <label for="pap_program" class="form-label fw-bold small">Program <label class="text-red-500 text-[10px]">(N/A if not applicable)</label></label>
-                                <input type="text" id="pap_program" class="form-control form-control-sm py-2"
-                                    list="pap_program_options" style="font-size: 0.875rem;" autocomplete="off" required>
-                                <datalist id="pap_program_options"></datalist>
-                            </div>
-
-                            <div class="col-12">
-                                <label for="pap_project" class="form-label fw-bold small">Project <label class="text-red-500 text-[10px]">(N/A if not applicable)</label></label>
-                                <input type="text" id="pap_project" class="form-control form-control-sm py-2"
-                                    list="pap_project_options" style="font-size: 0.875rem;" required autocomplete="off">
-                                <datalist id="pap_project_options"></datalist>
-                            </div>
+                            @include('components.pap_program_fields')
 
                             <div class="col-12 col-md-6">
                                 <label for="pap_activities" class="form-label fw-bold small">Activity</label>

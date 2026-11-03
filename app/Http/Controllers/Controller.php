@@ -8,6 +8,17 @@ use Illuminate\Support\Collection;
 
 abstract class Controller
 {
+    protected function programHierarchySortValue($value, string $labelSortValue): string
+    {
+        $normalized = strtolower(trim((string) ($value ?? '')));
+        $normalized = preg_replace('/\s+/', ' ', $normalized);
+        if (in_array($normalized, ['', 'n/a', 'na', 'not applicable'], true)) {
+            return '0|';
+        }
+
+        return '1|'.$labelSortValue;
+    }
+
     protected function roleView(string $view): string
     {
         $user = auth()->user();

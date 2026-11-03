@@ -1861,6 +1861,11 @@
             const papLevel8Input = document.getElementById('pap_level_8');
 
             if (programInput) programInput.value = String(matchedPap.program || '');
+            for (const field of ['subprogram', 'subsubprogram', 'subsubsubprogram', 'subsubsubsubprogram', 'subsubsubsubsubprogram']) {
+                const input = document.getElementById(`pap_${field}`);
+                if (input) input.value = String(matchedPap[field] || '');
+            }
+            window.pmsSyncProgramLevels?.();
             if (projectInput) projectInput.value = String(matchedPap.project || '');
             if (papActivitiesInput) papActivitiesInput.value = String(matchedPap.activities || '');
             if (papSubactivitiesInput) papSubactivitiesInput.value = String(matchedPap.subactivities || '');
@@ -1891,6 +1896,11 @@
             const fieldMap = {
                 pap_title: 'title',
                 pap_program: 'program',
+                pap_subprogram: 'subprogram',
+                pap_subsubprogram: 'subsubprogram',
+                pap_subsubsubprogram: 'subsubsubprogram',
+                pap_subsubsubsubprogram: 'subsubsubsubprogram',
+                pap_subsubsubsubsubprogram: 'subsubsubsubsubprogram',
                 pap_project: 'project',
                 pap_activities: 'activities',
                 pap_subactivities: 'subactivities',
@@ -1915,40 +1925,34 @@
                 parentFieldIds.map(getPapInputValue), item => papMatchesParents(item, parentFieldIds));
         }
 
-        function clearPapDescendantFields(parentFieldId) {
-            const descendantMap = {
-                pap_title: ['pap_program', 'pap_project', 'pap_activities', 'pap_subactivities', 'pap_subsubactivities', 'pap_level_6', 'pap_level_7', 'pap_level_8'],
-                pap_program: ['pap_project', 'pap_activities', 'pap_subactivities', 'pap_subsubactivities', 'pap_level_6', 'pap_level_7', 'pap_level_8'],
-                pap_project: ['pap_activities', 'pap_subactivities', 'pap_subsubactivities', 'pap_level_6', 'pap_level_7', 'pap_level_8'],
-                pap_activities: ['pap_subactivities', 'pap_subsubactivities', 'pap_level_6', 'pap_level_7', 'pap_level_8'],
-                pap_subactivities: ['pap_subsubactivities', 'pap_level_6', 'pap_level_7', 'pap_level_8'],
-                pap_subsubactivities: ['pap_level_6', 'pap_level_7', 'pap_level_8'],
-                pap_level_6: ['pap_level_7', 'pap_level_8'],
-                pap_level_7: ['pap_level_8'],
-            };
-
-            (descendantMap[parentFieldId] || []).forEach(fieldId => {
-                const field = document.getElementById(fieldId);
-                if (field) field.value = '';
-            });
-        }
         function populatePapChildDropdowns() {
-            populateFilteredPapOptions('pap_program_options', 'program', ['pap_title']);
+            populateFilteredPapOptions('pap_program_options', 'program');
+            populateFilteredPapOptions('pap_subprogram_options', 'subprogram', ['pap_program']);
+            populateFilteredPapOptions('pap_subsubprogram_options', 'subsubprogram', ['pap_program', 'pap_subprogram']);
+            populateFilteredPapOptions('pap_subsubsubprogram_options', 'subsubsubprogram', ['pap_program', 'pap_subprogram', 'pap_subsubprogram']);
+            populateFilteredPapOptions('pap_subsubsubsubprogram_options', 'subsubsubsubprogram', ['pap_program', 'pap_subprogram', 'pap_subsubprogram', 'pap_subsubsubprogram']);
+            populateFilteredPapOptions('pap_subsubsubsubsubprogram_options', 'subsubsubsubsubprogram', ['pap_program', 'pap_subprogram', 'pap_subsubprogram', 'pap_subsubsubprogram', 'pap_subsubsubsubprogram']);
+            populatePapTitleDropdown();
             populateFilteredPapOptions('pap_project_options', 'project', ['pap_title', 'pap_program']);
-            populateFilteredPapOptions('pap_activity_options', 'activities', ['pap_title', 'pap_program', 'pap_project']);
-            populateFilteredPapOptions('pap_subactivity_options', 'subactivities', ['pap_title', 'pap_program', 'pap_project', 'pap_activities']);
-            populateFilteredPapOptions('pap_subsubactivity_options', 'subsubactivities', ['pap_title', 'pap_program', 'pap_project', 'pap_activities', 'pap_subactivities']);
-            populateFilteredPapOptions('pap_level_6_options', 'level_6', ['pap_title', 'pap_program', 'pap_project', 'pap_activities', 'pap_subactivities', 'pap_subsubactivities']);
-            populateFilteredPapOptions('pap_level_7_options', 'level_7', ['pap_title', 'pap_program', 'pap_project', 'pap_activities', 'pap_subactivities', 'pap_subsubactivities', 'pap_level_6']);
-            populateFilteredPapOptions('pap_level_8_options', 'level_8', ['pap_title', 'pap_program', 'pap_project', 'pap_activities', 'pap_subactivities', 'pap_subsubactivities', 'pap_level_6', 'pap_level_7']);
+            populateFilteredPapOptions('pap_activity_options', 'activities', ['pap_title', 'pap_program', 'pap_subprogram', 'pap_subsubprogram', 'pap_subsubsubprogram', 'pap_subsubsubsubprogram', 'pap_subsubsubsubsubprogram', 'pap_project']);
+            populateFilteredPapOptions('pap_subactivity_options', 'subactivities', ['pap_title', 'pap_program', 'pap_subprogram', 'pap_subsubprogram', 'pap_subsubsubprogram', 'pap_subsubsubsubprogram', 'pap_subsubsubsubsubprogram', 'pap_project', 'pap_activities']);
+            populateFilteredPapOptions('pap_subsubactivity_options', 'subsubactivities', ['pap_title', 'pap_program', 'pap_subprogram', 'pap_subsubprogram', 'pap_subsubsubprogram', 'pap_subsubsubsubprogram', 'pap_subsubsubsubsubprogram', 'pap_project', 'pap_activities', 'pap_subactivities']);
+            populateFilteredPapOptions('pap_level_6_options', 'level_6', ['pap_title', 'pap_program', 'pap_subprogram', 'pap_subsubprogram', 'pap_subsubsubprogram', 'pap_subsubsubsubprogram', 'pap_subsubsubsubsubprogram', 'pap_project', 'pap_activities', 'pap_subactivities', 'pap_subsubactivities']);
+            populateFilteredPapOptions('pap_level_7_options', 'level_7', ['pap_title', 'pap_program', 'pap_subprogram', 'pap_subsubprogram', 'pap_subsubsubprogram', 'pap_subsubsubsubprogram', 'pap_subsubsubsubsubprogram', 'pap_project', 'pap_activities', 'pap_subactivities', 'pap_subsubactivities', 'pap_level_6']);
+            populateFilteredPapOptions('pap_level_8_options', 'level_8', ['pap_title', 'pap_program', 'pap_subprogram', 'pap_subsubprogram', 'pap_subsubsubprogram', 'pap_subsubsubsubprogram', 'pap_subsubsubsubsubprogram', 'pap_project', 'pap_activities', 'pap_subactivities', 'pap_subsubactivities', 'pap_level_6', 'pap_level_7']);
         }
         function populatePapTitleDropdown() {
-            populateFilteredPapOptions('pap_title_options', 'title');
+            populateFilteredPapOptions('pap_title_options', 'title', ['pap_program', 'pap_subprogram', 'pap_subsubprogram', 'pap_subsubsubprogram', 'pap_subsubsubsubprogram', 'pap_subsubsubsubsubprogram']);
         }
 
         function findMatchingPapFromModal() {
             const title = normalizePapField(document.getElementById('pap_title')?.value);
             const program = normalizePapField(document.getElementById('pap_program')?.value);
+            const subprogram = normalizePapField(document.getElementById('pap_subprogram')?.value);
+            const subsubprogram = normalizePapField(document.getElementById('pap_subsubprogram')?.value);
+            const subsubsubprogram = normalizePapField(document.getElementById('pap_subsubsubprogram')?.value);
+            const subsubsubsubprogram = normalizePapField(document.getElementById('pap_subsubsubsubprogram')?.value);
+            const subsubsubsubsubprogram = normalizePapField(document.getElementById('pap_subsubsubsubsubprogram')?.value);
             const project = normalizePapField(document.getElementById('pap_project')?.value);
             const activities = normalizePapField(document.getElementById('pap_activities')?.value);
             const subactivities = normalizePapField(document.getElementById('pap_subactivities')?.value);
@@ -1964,6 +1968,11 @@
             return (papPrefillData || []).find(item =>
                 normalizePapField(item?.title) === title
                 && normalizePapField(item?.program) === program
+                && normalizePapField(item?.subprogram) === subprogram
+                && normalizePapField(item?.subsubprogram) === subsubprogram
+                && normalizePapField(item?.subsubsubprogram) === subsubsubprogram
+                && normalizePapField(item?.subsubsubsubprogram) === subsubsubsubprogram
+                && normalizePapField(item?.subsubsubsubsubprogram) === subsubsubsubsubprogram
                 && normalizePapField(item?.project) === project
                 && normalizePapField(item?.activities) === activities
                 && normalizePapField(item?.subactivities) === subactivities
@@ -1994,49 +2003,19 @@
             const indicatorNameInput = document.getElementById('modal_indicator_name');
             const indicatorTypeInput = document.getElementById('modal_indicator_type');
             const indicatorTypeToggle = document.getElementById('use_indicator_type');
-            const normalizedIndicatorName = normalizePapField(indicatorNameInput?.value);
-            const hasTypedIndicatorName = normalizedIndicatorName !== '';
 
-            if (!matchedPap || !Array.isArray(matchedPap.indicators) || matchedPap.indicators.length === 0) {
+            const selectedIndicator = getSelectedIndicatorFromPapMatch(matchedPap);
+            if (!selectedIndicator) {
                 if (indicatorIdInput) {
                     indicatorIdInput.value = '';
                     delete indicatorIdInput.dataset.rowId;
                 }
-                if (!hasTypedIndicatorName && indicatorNameInput) {
-                    indicatorNameInput.value = '';
-                }
-                if (indicatorTypeInput) {
-                    indicatorTypeInput.value = '';
-                }
-                if (indicatorTypeToggle) {
-                    indicatorTypeToggle.checked = false;
-                }
-                toggleIndicatorTypeDropdown();
-                setOfficeCheckboxes([]);
                 return;
             }
 
-            const selectedIndicator = getSelectedIndicatorFromPapMatch(matchedPap);
-
-            if (!selectedIndicator) {
-                const hadLinkedIndicator = Boolean(String(indicatorIdInput?.value || '').trim());
-
-                if (indicatorIdInput) {
-                    indicatorIdInput.value = '';
-                    delete indicatorIdInput.dataset.rowId;
-                }
-
-                if (hadLinkedIndicator) {
-                    if (indicatorTypeInput) {
-                        indicatorTypeInput.value = '';
-                    }
-                    if (indicatorTypeToggle) {
-                        indicatorTypeToggle.checked = false;
-                    }
-                    toggleIndicatorTypeDropdown();
-                    setOfficeCheckboxes([]);
-                }
-
+            const selectedId = String(selectedIndicator.id || '').trim();
+            const selectedRowId = String(selectedIndicator.row_id || matchedPap?.row_id || '').trim();
+            if (indicatorIdInput?.value === selectedId && indicatorIdInput?.dataset.rowId === selectedRowId) {
                 return;
             }
 
@@ -2106,14 +2085,13 @@
                 });
             };
 
-            const papFieldIds = ['pap_title', 'pap_program', 'pap_project', 'pap_activities', 'pap_subactivities', 'pap_subsubactivities', 'pap_level_6', 'pap_level_7', 'pap_level_8'];
+            const papFieldIds = ['pap_title', 'pap_program', 'pap_subprogram', 'pap_subsubprogram', 'pap_subsubsubprogram', 'pap_subsubsubsubprogram', 'pap_subsubsubsubsubprogram', 'pap_project', 'pap_activities', 'pap_subactivities', 'pap_subsubactivities', 'pap_level_6', 'pap_level_7', 'pap_level_8'];
             let modalPrefillTimer = null;
 
             const titleField = document.getElementById('pap_title');
             if (titleField) {
                 titleField.addEventListener('input', function () {
                     clearTimeout(modalPrefillTimer);
-                    clearPapDescendantFields('pap_title');
                     modalPrefillTimer = setTimeout(() => {
                         populatePapChildDropdowns();
                         applyModalPrefillFromExistingPap();
@@ -2122,7 +2100,6 @@
 
                 titleField.addEventListener('change', function () {
                     clearTimeout(modalPrefillTimer);
-                    clearPapDescendantFields('pap_title');
                     populatePapChildDropdowns();
                     applyModalPrefillFromExistingPap();
                 });
@@ -2140,7 +2117,6 @@
 
                 field.addEventListener('input', function () {
                     clearTimeout(modalPrefillTimer);
-                    clearPapDescendantFields(fieldId);
                     modalPrefillTimer = setTimeout(() => {
                         populatePapChildDropdowns();
                         applyModalPrefillFromExistingPap();
@@ -2149,7 +2125,6 @@
 
                 field.addEventListener('change', function () {
                     clearTimeout(modalPrefillTimer);
-                    clearPapDescendantFields(fieldId);
                     populatePapChildDropdowns();
                     applyModalPrefillFromExistingPap();
                 });

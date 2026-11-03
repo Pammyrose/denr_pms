@@ -129,6 +129,11 @@
       normalizeValue(item?.title),
       normalizeValue(item?.program),
       normalizeValue(item?.project),
+      normalizeValue(item?.subprogram),
+      normalizeValue(item?.subsubprogram),
+      normalizeValue(item?.subsubsubprogram),
+      normalizeValue(item?.subsubsubsubprogram),
+      normalizeValue(item?.subsubsubsubsubprogram),
     ].join('|');
 
     const setModalMode = (editing) => {
@@ -177,6 +182,11 @@
       const fields = {
         pap_title: pap?.title,
         pap_program: pap?.program,
+        pap_subprogram: pap?.subprogram,
+        pap_subsubprogram: pap?.subsubprogram,
+        pap_subsubsubprogram: pap?.subsubsubprogram,
+        pap_subsubsubsubprogram: pap?.subsubsubsubprogram,
+        pap_subsubsubsubsubprogram: pap?.subsubsubsubsubprogram,
         pap_project: pap?.project,
         pap_activities: pap?.activities,
         pap_subactivities: pap?.subactivities,
@@ -192,6 +202,8 @@
           input.value = String(value || '');
         }
       });
+
+      window.pmsSyncProgramLevels?.();
 
       [6, 7, 8].forEach((level) => {
         if (String(pap?.[`level_${level}`] || '').trim() && typeof showNextPapLevel === 'function') {

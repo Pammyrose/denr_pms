@@ -66,7 +66,7 @@
         ->groupBy(function ($row) use ($normalizeGroupValue) {
             return $normalizeGroupValue($row->title ?? '') . '|'
                 . $normalizeGroupValue($row->program ?? '') . '|'
-                . $normalizeGroupValue($row->project ?? '');
+                . $normalizeGroupValue($row->project ?? '') . '|' . $normalizeGroupValue($row->subprogram ?? '') . '|' . $normalizeGroupValue($row->subsubprogram ?? '') . '|' . $normalizeGroupValue($row->subsubsubprogram ?? '') . '|' . $normalizeGroupValue($row->subsubsubsubprogram ?? '') . '|' . $normalizeGroupValue($row->subsubsubsubsubprogram ?? '');
         })
         ->values();
 
@@ -183,9 +183,14 @@
 @foreach($groupedPrograms as $groupPrograms)
     @php
         $program = $groupPrograms->first();
-        $programCoreKey = $normalizeGroupValue($program->title ?? '') . '|' . $normalizeGroupValue($program->program ?? '') . '|' . $normalizeGroupValue($program->project ?? '');
+        $programCoreKey = $normalizeGroupValue($program->title ?? '') . '|' . $normalizeGroupValue($program->program ?? '') . '|' . $normalizeGroupValue($program->project ?? '') . '|' . $normalizeGroupValue($program->subprogram ?? '') . '|' . $normalizeGroupValue($program->subsubprogram ?? '') . '|' . $normalizeGroupValue($program->subsubsubprogram ?? '') . '|' . $normalizeGroupValue($program->subsubsubsubprogram ?? '') . '|' . $normalizeGroupValue($program->subsubsubsubsubprogram ?? '');
         $programSearchText = collect([
             $program->title ?? '',
+            $program->subprogram ?? '',
+            $program->subsubprogram ?? '',
+            $program->subsubsubprogram ?? '',
+            $program->subsubsubsubprogram ?? '',
+            $program->subsubsubsubsubprogram ?? '',
             $program->program ?? '',
             $program->project ?? '',
         ])->filter()->implode(' ');
@@ -197,17 +202,7 @@
         <td class="px-6 py-4" colspan="2">
             <div class="flex items-center justify-between">
                 <div class="flex flex-col items-start">
-                    <strong>{{ $program->title }}</strong>
-                    @if($program->program && !in_array($normalizeGroupValue($program->program), ['n/a', 'na', 'not applicable'], true))
-                        <div class="text-sm mt-1 ml-6" style="font-weight: 600 !important; color: maroon;">
-                            {{ $program->program }}
-                        </div>
-                    @endif
-                    @if($program->project && !in_array($normalizeGroupValue($program->project), ['n/a', 'na', 'not applicable'], true))
-                        <div class="text-sm text-gray-700 font-normal mt-2 ml-10">
-                            {{ $program->project }}
-                        </div>
-                    @endif
+                    @include('components.pap_program_heading')
                 </div>
                 <span class="flex items-center">
                     @php

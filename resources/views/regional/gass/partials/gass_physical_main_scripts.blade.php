@@ -138,8 +138,9 @@
                         `;
                     } else {
                         excelPreviewRows.innerHTML = rows.map(row => {
-                            const hierarchy = Array.isArray(row?.hierarchy) && row.hierarchy.length > 0
-                                ? row.hierarchy.map((item, index) => `<div class="gass-preview-level level-${Math.min(index, 4)}">${escapePreviewHtml(item)}</div>`).join('')
+                            const hierarchyParts = window.pmsExcelPreviewHierarchy(row);
+                            const hierarchy = hierarchyParts.length > 0
+                                ? hierarchyParts.map((item, index) => `<div class="gass-preview-level level-${Math.min(index, 4)}">${escapePreviewHtml(item)}</div>`).join('')
                                 : '<span class="text-muted">N/A</span>';
                             const offices = Array.isArray(row?.offices) && row.offices.length > 0
                                 ? row.offices.slice(0, 8).map(office => `<span class="badge text-bg-light border">${escapePreviewHtml(office)}</span>`).join(' ')

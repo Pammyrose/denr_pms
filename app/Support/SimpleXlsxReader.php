@@ -77,79 +77,85 @@ class SimpleXlsxReader
 
     public function rowsWithStyles(string $path, string $sheetName, bool $skipHiddenRows = false): Generator
     {
-        if (!is_file($path)) {
+        if (! is_file($path)) {
             throw new RuntimeException("File not found: {$path}");
         }
 
-        $zip = new ZipArchive();
+        $zip = new ZipArchive;
         if ($zip->open($path) !== true) {
             throw new RuntimeException('Unable to open Excel file.');
         }
 
-        $sharedStrings = $this->sharedStrings($zip);
-        $styles = $this->styles($zip);
-        $sheetPath = $this->sheetPath($zip, $sheetName);
-        $sheetXml = $zip->getFromName($sheetPath);
+        $reader = null;
+        try {
+            $sharedStrings = $this->sharedStrings($zip);
+            $styles = $this->styles($zip);
+            $sheetPath = $this->sheetPath($zip, $sheetName);
+            $sheetXml = $zip->getFromName($sheetPath);
 
-        if ($sheetXml === false) {
-            $zip->close();
-            throw new RuntimeException("Unable to read sheet: {$sheetName}");
-        }
-
-        $reader = new XMLReader();
-        $reader->XML($sheetXml);
-
-        while ($reader->read()) {
-            if ($reader->nodeType !== XMLReader::ELEMENT || $reader->name !== 'row') {
-                continue;
+            if ($sheetXml === false) {
+                throw new RuntimeException("Unable to read sheet: {$sheetName}");
             }
 
-            if ($skipHiddenRows && (string) $reader->getAttribute('hidden') === '1') {
-                continue;
+            $reader = new XMLReader;
+            $reader->XML($sheetXml);
+
+            // Position at the first row, then skip entire row subtrees.
+            while ($reader->read() && ($reader->nodeType !== XMLReader::ELEMENT || $reader->name !== 'row')) {
             }
+            while ($reader->nodeType === XMLReader::ELEMENT && $reader->name === 'row') {
 
-            $rowXml = simplexml_load_string($reader->readOuterXML());
-            $rowNumber = (int) $rowXml->attributes()['r'];
-            $cells = [];
-            $cellStyles = [];
+                if ($skipHiddenRows && (string) $reader->getAttribute('hidden') === '1') {
+                    $reader->next('row');
 
-            foreach ($rowXml->c as $cell) {
-                $cellAttrs = $cell->attributes();
-                $ref = (string) ($cellAttrs['r'] ?? '');
-                $type = (string) ($cellAttrs['t'] ?? '');
-                $styleIndex = (int) ($cellAttrs['s'] ?? 0);
-                $column = preg_replace('/\d+/', '', $ref);
-                $value = isset($cell->v) ? (string) $cell->v : '';
-                $sharedStringStyle = ['bold' => false];
+                    continue;
+                }
 
-                if ($type === 's' && $value !== '') {
-                    $sharedString = $sharedStrings[(int) $value] ?? null;
-                    if (is_array($sharedString)) {
-                        $value = (string) ($sharedString['text'] ?? $value);
-                        $sharedStringStyle = ['bold' => (bool) ($sharedString['bold'] ?? false)];
-                    } else {
-                        $value = $sharedString ?? $value;
+                $rowXml = simplexml_load_string($reader->readOuterXML());
+                $rowNumber = (int) $rowXml->attributes()['r'];
+                $cells = [];
+                $cellStyles = [];
+
+                foreach ($rowXml->c as $cell) {
+                    $cellAttrs = $cell->attributes();
+                    $ref = (string) ($cellAttrs['r'] ?? '');
+                    $type = (string) ($cellAttrs['t'] ?? '');
+                    $styleIndex = (int) ($cellAttrs['s'] ?? 0);
+                    $column = preg_replace('/\d+/', '', $ref);
+                    $value = isset($cell->v) ? (string) $cell->v : '';
+                    $sharedStringStyle = ['bold' => false];
+
+                    if ($type === 's' && $value !== '') {
+                        $sharedString = $sharedStrings[(int) $value] ?? null;
+                        if (is_array($sharedString)) {
+                            $value = (string) ($sharedString['text'] ?? $value);
+                            $sharedStringStyle = ['bold' => (bool) ($sharedString['bold'] ?? false)];
+                        } else {
+                            $value = $sharedString ?? $value;
+                        }
+                    } elseif ($type === 'inlineStr' && isset($cell->is->t)) {
+                        $value = (string) $cell->is->t;
                     }
-                } elseif ($type === 'inlineStr' && isset($cell->is->t)) {
-                    $value = (string) $cell->is->t;
+
+                    $value = trim(preg_replace('/\s+/', ' ', $value));
+                    if ($value !== '') {
+                        $cells[$column] = $value;
+                        $cellStyle = $styles[$styleIndex] ?? ['bold' => false, 'fill' => null, 'fill_type' => null];
+                        $cellStyle['bold'] = (bool) ($cellStyle['bold'] ?? false) || (bool) ($sharedStringStyle['bold'] ?? false);
+                        $cellStyles[$column] = $cellStyle;
+                    }
                 }
 
-                $value = trim(preg_replace('/\s+/', ' ', $value));
-                if ($value !== '') {
-                    $cells[$column] = $value;
-                    $cellStyle = $styles[$styleIndex] ?? ['bold' => false, 'fill' => null, 'fill_type' => null];
-                    $cellStyle['bold'] = (bool) ($cellStyle['bold'] ?? false) || (bool) ($sharedStringStyle['bold'] ?? false);
-                    $cellStyles[$column] = $cellStyle;
-                }
+                yield $rowNumber => [
+                    'values' => $cells,
+                    'styles' => $cellStyles,
+                ];
+                $reader->next('row');
             }
-
-            yield $rowNumber => [
-                'values' => $cells,
-                'styles' => $cellStyles,
-            ];
+        } finally {
+            $reader?->close();
+            $zip->close();
         }
-
-        $zip->close();
     }
 
     private function sharedStrings(ZipArchive $zip): array
@@ -190,7 +196,7 @@ class SimpleXlsxReader
         }
 
         $xml = simplexml_load_string($stylesXml);
-        if (!$xml instanceof SimpleXMLElement) {
+        if (! $xml instanceof SimpleXMLElement) {
             return [];
         }
 
@@ -238,7 +244,7 @@ class SimpleXlsxReader
             $target = (string) $attrs['Target'];
             $relMap[(string) $attrs['Id']] = str_starts_with($target, 'xl/')
                 ? $target
-                : 'xl/' . ltrim($target, '/');
+                : 'xl/'.ltrim($target, '/');
         }
 
         $workbook->registerXPathNamespace('r', 'http://schemas.openxmlformats.org/officeDocument/2006/relationships');
@@ -249,6 +255,7 @@ class SimpleXlsxReader
             }
 
             $relAttrs = $sheet->attributes('r', true);
+
             return $relMap[(string) $relAttrs['id']] ?? throw new RuntimeException("Sheet path missing: {$sheetName}");
         }
 

@@ -66,7 +66,8 @@ class DashboardPerformanceComparisonTest extends TestCase
         $sto = $monthly->invoke($controller, 'physical_targets', 2026, [7], 'sto');
         $gassRows = $rows->invoke($controller, 'physical_targets', 2026, [7], 'gass');
         $stoRows = $rows->invoke($controller, 'physical_targets', 2026, [7], 'sto');
-        $reads = collect(DB::getQueryLog())->filter(fn ($query) => str_contains($query['query'], 'from "physical_targets"'));
+        $targetTable = DB::connection()->getQueryGrammar()->wrapTable('physical_targets');
+        $reads = collect(DB::getQueryLog())->filter(fn ($query) => str_contains($query['query'], 'from '.$targetTable));
         DB::disableQueryLog();
 
         $this->assertCount(1, $reads, 'Monthly summaries and sector lists should reuse the same scoped rows.');

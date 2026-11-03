@@ -33,6 +33,11 @@ class GassController extends Controller
         $sortProgramHierarchy = function ($row) {
             return $this->sourceOrderedHierarchySortValue($row->title_source_order ?? null, $row->title ?? '')
                 . '|' . $this->sourceOrderedHierarchySortValue($row->program_source_order ?? null, $row->program ?? '')
+                . '|' . $this->programHierarchySortValue($row->subprogram ?? '', $this->hierarchySortValue($row->subprogram ?? ''))
+                . '|' . $this->programHierarchySortValue($row->subsubprogram ?? '', $this->hierarchySortValue($row->subsubprogram ?? ''))
+                . '|' . $this->programHierarchySortValue($row->subsubsubprogram ?? '', $this->hierarchySortValue($row->subsubsubprogram ?? ''))
+                . '|' . $this->programHierarchySortValue($row->subsubsubsubprogram ?? '', $this->hierarchySortValue($row->subsubsubsubprogram ?? ''))
+                . '|' . $this->programHierarchySortValue($row->subsubsubsubsubprogram ?? '', $this->hierarchySortValue($row->subsubsubsubsubprogram ?? ''))
                 . '|' . $this->sourceOrderedHierarchySortValue($row->project_source_order ?? null, $row->project ?? '')
                 . '|' . $this->sourceOrderedHierarchySortValue($row->activities_source_order ?? null, $row->activities ?? '')
                 . '|' . $this->sourceOrderedHierarchySortValue($row->subactivities_source_order ?? null, $row->subactivities ?? '')
@@ -189,6 +194,11 @@ class GassController extends Controller
             $priority = $row->_sort_priority ?? 5;
             return $this->sourceOrderedHierarchySortValue($row->title_source_order ?? null, $row->title ?? '')
                 . '|' . $this->sourceOrderedHierarchySortValue($row->program_source_order ?? null, $row->program ?? '')
+                . '|' . $this->programHierarchySortValue($row->subprogram ?? '', $this->hierarchySortValue($row->subprogram ?? ''))
+                . '|' . $this->programHierarchySortValue($row->subsubprogram ?? '', $this->hierarchySortValue($row->subsubprogram ?? ''))
+                . '|' . $this->programHierarchySortValue($row->subsubsubprogram ?? '', $this->hierarchySortValue($row->subsubsubprogram ?? ''))
+                . '|' . $this->programHierarchySortValue($row->subsubsubsubprogram ?? '', $this->hierarchySortValue($row->subsubsubsubprogram ?? ''))
+                . '|' . $this->programHierarchySortValue($row->subsubsubsubsubprogram ?? '', $this->hierarchySortValue($row->subsubsubsubsubprogram ?? ''))
                 . '|' . $this->sourceOrderedHierarchySortValue($row->project_source_order ?? null, $row->project ?? '')
                 . '|' . $this->sourceOrderedHierarchySortValue($row->activities_source_order ?? null, $row->activities ?? '')
                 . '|' . $priority
@@ -302,6 +312,11 @@ class GassController extends Controller
             $priority = $row->_sort_priority ?? 5;
             return $this->sourceOrderedHierarchySortValue($row->title_source_order ?? null, $row->title ?? '')
                 . '|' . $this->sourceOrderedHierarchySortValue($row->program_source_order ?? null, $row->program ?? '')
+                . '|' . $this->programHierarchySortValue($row->subprogram ?? '', $this->hierarchySortValue($row->subprogram ?? ''))
+                . '|' . $this->programHierarchySortValue($row->subsubprogram ?? '', $this->hierarchySortValue($row->subsubprogram ?? ''))
+                . '|' . $this->programHierarchySortValue($row->subsubsubprogram ?? '', $this->hierarchySortValue($row->subsubsubprogram ?? ''))
+                . '|' . $this->programHierarchySortValue($row->subsubsubsubprogram ?? '', $this->hierarchySortValue($row->subsubsubsubprogram ?? ''))
+                . '|' . $this->programHierarchySortValue($row->subsubsubsubsubprogram ?? '', $this->hierarchySortValue($row->subsubsubsubsubprogram ?? ''))
                 . '|' . $this->sourceOrderedHierarchySortValue($row->project_source_order ?? null, $row->project ?? '')
                 . '|' . $this->sourceOrderedHierarchySortValue($row->activities_source_order ?? null, $row->activities ?? '')
                 . '|' . $priority
@@ -322,6 +337,11 @@ class GassController extends Controller
             $priority = $row->_sort_priority ?? 5;
             return $this->sourceOrderedHierarchySortValue($row->title_source_order ?? null, $row->title ?? '')
                 . '|' . $this->sourceOrderedHierarchySortValue($row->program_source_order ?? null, $row->program ?? '')
+                . '|' . $this->programHierarchySortValue($row->subprogram ?? '', $this->hierarchySortValue($row->subprogram ?? ''))
+                . '|' . $this->programHierarchySortValue($row->subsubprogram ?? '', $this->hierarchySortValue($row->subsubprogram ?? ''))
+                . '|' . $this->programHierarchySortValue($row->subsubsubprogram ?? '', $this->hierarchySortValue($row->subsubsubprogram ?? ''))
+                . '|' . $this->programHierarchySortValue($row->subsubsubsubprogram ?? '', $this->hierarchySortValue($row->subsubsubsubprogram ?? ''))
+                . '|' . $this->programHierarchySortValue($row->subsubsubsubsubprogram ?? '', $this->hierarchySortValue($row->subsubsubsubsubprogram ?? ''))
                 . '|' . $this->sourceOrderedHierarchySortValue($row->project_source_order ?? null, $row->project ?? '')
                 . '|' . $this->sourceOrderedHierarchySortValue($row->activities_source_order ?? null, $row->activities ?? '')
                 . '|' . $priority
@@ -492,6 +512,11 @@ class GassController extends Controller
                     'id' => (int) $pap->id,
                     'row_id' => (int) ($pap->row_id ?? $pap->id),
                     'title' => (string) ($pap->title ?? ''),
+                    'subprogram' => (string) ($pap->subprogram ?? ''),
+                    'subsubprogram' => (string) ($pap->subsubprogram ?? ''),
+                    'subsubsubprogram' => (string) ($pap->subsubsubprogram ?? ''),
+                    'subsubsubsubprogram' => (string) ($pap->subsubsubsubprogram ?? ''),
+                    'subsubsubsubsubprogram' => (string) ($pap->subsubsubsubsubprogram ?? ''),
                     'program' => (string) ($pap->program ?? ''),
                     'project' => (string) ($pap->project ?? ''),
                     'activities' => (string) ($pap->activities ?? ''),
@@ -745,7 +770,12 @@ class GassController extends Controller
     {
         $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'program' => 'nullable|string|max:150',
+            'program' => 'required_with:subprogram,subsubprogram,subsubsubprogram,subsubsubsubprogram,subsubsubsubsubprogram|nullable|string|max:150',
+            'subprogram' => 'required_with:subsubprogram,subsubsubprogram,subsubsubsubprogram,subsubsubsubsubprogram|nullable|string|max:150',
+            'subsubprogram' => 'required_with:subsubsubprogram,subsubsubsubprogram,subsubsubsubsubprogram|nullable|string|max:150',
+            'subsubsubprogram' => 'required_with:subsubsubsubprogram,subsubsubsubsubprogram|nullable|string|max:150',
+            'subsubsubsubprogram' => 'required_with:subsubsubsubsubprogram|nullable|string|max:150',
+            'subsubsubsubsubprogram' => 'nullable|string|max:150',
             'project' => 'nullable|string|max:150',
             'activities' => 'nullable|string|max:255',
             'subactivities' => 'nullable|string|max:255',
@@ -822,12 +852,19 @@ class GassController extends Controller
                     ->where('ppa.types_id', $typeId)
                     ->where('ppa.record_type_id', $recordTypeId)
                     ->where('details.column_order', $index + 1)
+                    ->when($index === 0, function ($query) use ($papData) {
+                        foreach (['subprogram', 'subsubprogram', 'subsubsubprogram', 'subsubsubsubprogram', 'subsubsubsubsubprogram'] as $field) {
+                            $value = trim((string) ($papData[$field] ?? ''));
+                            $column = DB::connection()->getQueryGrammar()->wrap('details.'.$field);
+                            $query->whereRaw("LOWER(TRIM(COALESCE({$column}, ''))) = ?", [strtolower($value)]);
+                        }
+                    })
                     ->when(
                         $parentDetailId === null,
                         fn ($query) => $query->whereNull('details.parent_id'),
                         fn ($query) => $query->where('details.parent_id', $parentDetailId)
                     )
-                    ->whereRaw('LOWER(TRIM(ppa.name)) = ?', [strtolower($level['name'])])
+                    ->whereRaw('LOWER(TRIM('.DB::connection()->getQueryGrammar()->wrap('ppa.name').')) = ?', [strtolower($level['name'])])
                     ->when($index === 0 && $papYear !== null, function ($query) use ($papYear) {
                         $query->where('ppa.year', $papYear);
                     })
@@ -844,6 +881,11 @@ class GassController extends Controller
                 $detailId = DB::table('ppa_details')->insertGetId([
                     'parent_id' => $parentDetailId,
                     'column_order' => $index + 1,
+                    'subprogram' => $index === 0 ? (trim((string) ($papData['subprogram'] ?? '')) ?: null) : null,
+                    'subsubprogram' => $index === 0 ? (trim((string) ($papData['subsubprogram'] ?? '')) ?: null) : null,
+                    'subsubsubprogram' => $index === 0 ? (trim((string) ($papData['subsubsubprogram'] ?? '')) ?: null) : null,
+                    'subsubsubsubprogram' => $index === 0 ? (trim((string) ($papData['subsubsubsubprogram'] ?? '')) ?: null) : null,
+                    'subsubsubsubsubprogram' => $index === 0 ? (trim((string) ($papData['subsubsubsubsubprogram'] ?? '')) ?: null) : null,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
@@ -884,6 +926,11 @@ class GassController extends Controller
             'row_id' => $leafPpaId ?? $rootPpaId,
             'title' => (string) ($papData['title'] ?? ''),
             'program' => (string) ($papData['program'] ?? ''),
+            'subprogram' => (string) ($papData['subprogram'] ?? ''),
+            'subsubprogram' => (string) ($papData['subsubprogram'] ?? ''),
+            'subsubsubprogram' => (string) ($papData['subsubsubprogram'] ?? ''),
+            'subsubsubsubprogram' => (string) ($papData['subsubsubsubprogram'] ?? ''),
+            'subsubsubsubsubprogram' => (string) ($papData['subsubsubsubsubprogram'] ?? ''),
             'project' => (string) ($papData['project'] ?? ''),
             'activities' => (string) ($papData['activities'] ?? ''),
             'subactivities' => (string) ($papData['subactivities'] ?? ''),
@@ -2248,11 +2295,16 @@ private function getGassPrograms(?int $programId = null, string $search = '', ?i
             'level_7_ppa.id as level_7_row_id',
             'level_8_ppa.id as level_8_row_id',
             'level_9_ppa.id as level_9_row_id',
-            DB::raw('COALESCE(level_9_ppa.id, level_8_ppa.id, level_7_ppa.id, sub_sub_sub_activity_ppa.id, sub_sub_activity_ppa.id, sub_activity_ppa.id, main_activity_ppa.id, project_ppa.id, program_ppa.id) as row_id'),
+            DB::raw('COALESCE('.implode(', ', array_map(fn ($column) => DB::connection()->getQueryGrammar()->wrap($column), ['level_9_ppa.id', 'level_8_ppa.id', 'level_7_ppa.id', 'sub_sub_sub_activity_ppa.id', 'sub_sub_activity_ppa.id', 'sub_activity_ppa.id', 'main_activity_ppa.id', 'project_ppa.id', 'program_ppa.id'])).') as row_id'),
             'program_ppa.ppa_details_id',
             'program_ppa.created_at',
             'program_ppa.updated_at',
             'program_ppa.name as title',
+            'program_detail.subprogram',
+            'program_detail.subsubprogram',
+            'program_detail.subsubsubprogram',
+            'program_detail.subsubsubsubprogram',
+            'program_detail.subsubsubsubsubprogram',
             'program_detail.source_order as title_source_order',
             'project_ppa.name as program',
             'project_detail.source_order as program_source_order',
@@ -2298,7 +2350,7 @@ private function getGassPrograms(?int $programId = null, string $search = '', ?i
         })
         ->groupBy(function ($row) use ($normalizeHierarchyValue) {
             return $normalizeHierarchyValue($row->title ?? '') . '|'
-                . $normalizeHierarchyValue($row->program ?? '') . '|'
+                . $normalizeHierarchyValue($row->program ?? '') . '|' . $normalizeHierarchyValue($row->subprogram ?? '') . '|' . $normalizeHierarchyValue($row->subsubprogram ?? '') . '|' . $normalizeHierarchyValue($row->subsubsubprogram ?? '') . '|' . $normalizeHierarchyValue($row->subsubsubsubprogram ?? '') . '|' . $normalizeHierarchyValue($row->subsubsubsubsubprogram ?? '') . '|'
                 . $normalizeHierarchyValue($row->project ?? '') . '|'
                 . $normalizeHierarchyValue($row->activities ?? '') . '|'
                 . $normalizeHierarchyValue($row->subactivities ?? '') . '|'
@@ -2338,7 +2390,7 @@ private function getGassPrograms(?int $programId = null, string $search = '', ?i
         })
         ->unique(function ($row) use ($normalizeHierarchyValue) {
             return $normalizeHierarchyValue($row->title ?? '') . '|'
-                . $normalizeHierarchyValue($row->program ?? '') . '|'
+                . $normalizeHierarchyValue($row->program ?? '') . '|' . $normalizeHierarchyValue($row->subprogram ?? '') . '|' . $normalizeHierarchyValue($row->subsubprogram ?? '') . '|' . $normalizeHierarchyValue($row->subsubsubprogram ?? '') . '|' . $normalizeHierarchyValue($row->subsubsubsubprogram ?? '') . '|' . $normalizeHierarchyValue($row->subsubsubsubsubprogram ?? '') . '|'
                 . $normalizeHierarchyValue($row->project ?? '') . '|'
                 . $normalizeHierarchyValue($row->activities ?? '') . '|'
                 . $normalizeHierarchyValue($row->subactivities ?? '') . '|'

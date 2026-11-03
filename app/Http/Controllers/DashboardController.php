@@ -241,7 +241,7 @@ class DashboardController extends Controller
                 'ppa.ppa_details_id',
                 'ppa.office_id',
                 'ppa.year',
-                DB::raw('types.code as sector_code'),
+                'types.code as sector_code',
             ])
             ->orderBy('types.code')
             ->orderBy('ppa.name');

@@ -38,6 +38,7 @@ PMS supports the following core workflows:
 - Physical target and accomplishment entry
 - Financial performance entry and persistence
 - Program and indicator monitoring by sector and year
+- Manual PAP entry with Project first, followed by Program, up to five optional nested program levels, and activities
 - Preview-first Excel import for all eleven sectors, including combined physical target/accomplishment imports and recognized financial blocks
 - Office-scoped WFP Excel report export
 - Reason-backed requests to correct locked accomplishment months, administrator/regional review, and decision notifications

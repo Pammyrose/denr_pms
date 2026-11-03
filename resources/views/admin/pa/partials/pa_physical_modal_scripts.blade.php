@@ -13,6 +13,7 @@
 
         // Function to reset PAP levels (hide all dynamic levels)
         function resetPapLevels() {
+            window.pmsResetProgramLevels?.();
             for (let level = 6; level <= 8; level++) {
                 const container = document.getElementById(`pap_level_${level}_container`);
                 const input = document.getElementById(`pap_level_${level}`);
@@ -37,6 +38,11 @@
 
             const papTitle = document.getElementById('pap_title')?.value?.trim() || '';
             const papProgram = document.getElementById('pap_program')?.value?.trim() || '';
+            const papSubprogram = document.getElementById('pap_subprogram')?.value?.trim() || '';
+            const papSubsubprogram = document.getElementById('pap_subsubprogram')?.value?.trim() || '';
+            const papSubsubsubprogram = document.getElementById('pap_subsubsubprogram')?.value?.trim() || '';
+            const papSubsubsubsubprogram = document.getElementById('pap_subsubsubsubprogram')?.value?.trim() || '';
+            const papSubsubsubsubsubprogram = document.getElementById('pap_subsubsubsubsubprogram')?.value?.trim() || '';
             const papProject = document.getElementById('pap_project')?.value?.trim() || '';
             const papActivities = document.getElementById('pap_activities')?.value?.trim() || '';
             const papSubactivities = document.getElementById('pap_subactivities')?.value?.trim() || '';
@@ -52,8 +58,17 @@
             const indicatorTypeId = (indicatorTypeToggle?.checked ? document.getElementById('modal_indicator_type').value : '').trim();
 
             if (!papTitle) {
-                showTopRightErrorAlert('Please input title.');
+                showTopRightErrorAlert('Please input a project.');
                 return;
+            }
+
+            const programValues = [papProgram, papSubprogram, papSubsubprogram, papSubsubsubprogram, papSubsubsubsubprogram, papSubsubsubsubsubprogram];
+            for (let index = 0; index < programValues.length - 1; index++) {
+                if (!programValues[index] && programValues.slice(index + 1).some(Boolean)) {
+                    const label = index === 0 ? 'program' : 'sub-'.repeat(index) + 'program';
+                    showTopRightErrorAlert(`Please input a ${label}.`);
+                    return;
+                }
             }
 
             if (!indicatorName) {
@@ -82,6 +97,11 @@
                     papFormData.append('_token', token);
                     papFormData.append('title', papTitle);
                     papFormData.append('program', papProgram);
+                    papFormData.append('subprogram', papSubprogram);
+                    papFormData.append('subsubprogram', papSubsubprogram);
+                    papFormData.append('subsubsubprogram', papSubsubsubprogram);
+                    papFormData.append('subsubsubsubprogram', papSubsubsubsubprogram);
+                    papFormData.append('subsubsubsubsubprogram', papSubsubsubsubsubprogram);
                     papFormData.append('project', papProject);
                     papFormData.append('activities', papActivities);
                     papFormData.append('subactivities', papSubactivities);

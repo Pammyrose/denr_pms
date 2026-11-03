@@ -148,7 +148,7 @@ Monthly values are stored from January through December, with quarterly and annu
 - **Audit history:** user, route, action, changed fields, and request snapshots
 - **Framework infrastructure:** sessions, cache, and jobs
 
-Sector-specific legacy models and tables remain in the codebase for compatibility, while shared physical input and dashboard workflows use the unified `physical_targets` and `physical_accomplishments` tables.
+Sector-specific legacy model names remain as compatibility aliases for unified physical data. The obsolete empty sector link and universe tables were removed manually from the connected database; shared physical input and dashboard workflows use `physical_targets` and `physical_accomplishments`. The active PAP hierarchy, reference catalogs, financial tables, and Laravel infrastructure remain in place.
 
 ## Request and Data Flow
 
@@ -211,6 +211,8 @@ Laravel PMS application
 ```
 
 Environment-specific values such as the application URL, database connection, session driver, cache driver, mail transport, and secrets are supplied through Laravel environment configuration and must not be committed to source control.
+
+SQL table names default to the `pms_` prefix through `DB_TABLE_PREFIX` (for example, `pms_users`). Laravel applies the prefix across migrations and application persistence. Existing databases require a separate table rename before enabling the prefix; an empty `DB_TABLE_PREFIX` preserves access to unprefixed installations. See [Database Table Names](backend.md#database-table-names) for the deployment contract.
 
 Serve the `public/` directory and use Vite-built assets. Email verification requires a working mail transport and, for asynchronous queue connections, a persistent worker consuming `email-auth` and `default`. `composer run dev` starts the local server, queue listener, logs, and Vite together. Migration directories `core`, `sectors`, and `features` are registered in `AppServiceProvider`. This repository does not define a separate frontend deployment.
 

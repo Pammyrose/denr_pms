@@ -26,6 +26,10 @@ PAP and indicator detail tables load when their cards open. A modal shares its i
 
 PAP dropdowns use `public/js/pap-options.js` across all role/sector forms. The helper reuses options when parent values are unchanged and replaces changed options in one DOM operation. Physical/financial target highlighting indexes target inputs once per row and section and coalesces refreshes into animation frames.
 
+Add PAP hierarchy edits refresh the filtered suggestions without clearing other entered hierarchy values. An unmatched PAP or indicator draft clears only the hidden existing-indicator link; it preserves the entered indicator name, type, and office selections. Matching an existing indicator prefills its metadata once per linked indicator/PAP row, so repeated input/change events do not overwrite subsequent manual selections.
+
+The Add PAP form presents Project first, followed by Program, up to five optional nested program levels (Sub-program through Sub-sub-sub-sub-sub-program), and the existing activity fields. Plus buttons reveal one program level at a time, ending at Sub-sub-sub-sub-sub-program; the fifth nested level has no add button. The former Title control is labeled Project; the former separate Project control is removed from the visible form. Compatibility IDs remain `pap_program` for Program and `pap_title` for Project. The old `pap_project` value is retained as a hidden field when editing existing records and defaults to `N/A` for new entries. Program extensions participate in suggestions, exact PAP matching, save, edit prefill, and reset. Table headers include the program extensions so distinct paths remain identifiable.
+
 Physical and financial inputs are created only for expanded PAP rows within or near the visible table viewport. Expanding or scrolling to a row hydrates its enabled sections from the existing scoped JSON data; reopening it reuses its inputs, preserving unsaved edits. Summary and financial pending cells follow the same rule. A scoped row-visibility observer and passive scroll/resize listeners handle normal expansion, dashboard highlights, and pending filters. Save collection continues to submit changed, initialized rows; unopened records remain untouched.
 
 Run `node --test tests/Frontend/*.test.cjs` for dropdown caching, input matching, request ordering, failure recovery, browser-history checks, and save-workflow regression checks. Save tests cover confirmed versus pending changes, failed/expired/offline responses, retries, partial Save All failure, and locked-period reasons. These run the JavaScript save handlers in a simulated browser environment; PHP feature tests separately verify save/reload persistence, office access, and approval decisions.
@@ -124,6 +128,8 @@ Each physical-performance page is divided into partials so that the large data g
 
 Administrator screens for all eleven sectors include Excel-upload controls using the shared preview-first import workflow.
 
+Excel preview includes all five explicitly supplied sub-program levels after Program and before the activity path. Preview strings are escaped, and target/accomplishment previews remain distinct when their full PAP paths differ. See [Extended Program Levels](uploadexcel.md#extended-program-levels).
+
 ## Canonical PAP Performance Layout
 
 This section is the normative layout contract for every sector. GASS, STO, ENF, PA, ENGP, LANDS, SOILCON, NRA, PARIA, COBB, and Continuing screens must produce the same table structure and behavior in the `admin`, `regional`, `penro`, and `users` view namespaces. Sector names, route names, data, permissions, and import availability may differ; the visual hierarchy and DOM contract must not.
@@ -157,11 +163,11 @@ The toolbar may wrap on narrower screens, but its semantic order must remain the
 
 ### PAP Hierarchy Levels
 
-The interface supports the following ordered hierarchy. Empty values and the normalized values `N/A`, `NA`, and `Not Applicable` are treated as absent display levels.
+The following table lists the legacy storage positions. The manual form and program headers display Project (`title`), Program, then up to five nested sub-program levels; program extensions are root metadata rather than renumbered legacy positions. The hidden legacy `project` field remains available for existing imported paths. Empty values and the normalized values `N/A`, `NA`, and `Not Applicable` are treated as absent display levels.
 
 | Depth | Data field | Display label | Rendering responsibility |
 | ---: | --- | --- | --- |
-| 1 | `title` | Title | Top-level expandable program header |
+| 1 | `title` | Project | Project line in the expandable program header |
 | 2 | `program` | Program | Secondary line in the program header when applicable |
 | 3 | `project` | Project | Tertiary line in the program header when applicable |
 | 4 | `activities` | Activity | Group label or leaf when there are no deeper levels |
@@ -178,8 +184,8 @@ Although the compatibility fields are named `level_6`, `level_7`, and `level_8`,
 All sector templates must apply these rules:
 
 1. Normalize hierarchy values by trimming, converting to a consistent comparison case, and collapsing repeated whitespace.
-2. Group top-level records by normalized `title + program + project` to create one expandable program block.
-3. Sort each hierarchy depth naturally rather than lexicographically.
+2. Group records by normalized Project (`title`), Program, the five sub-program fields, and the legacy `project` field to create one expandable block per complete parent path.
+3. Resolve parent hierarchy before comparing letter or number prefixes. A parent entry without a nested sub-program precedes its child branches. Sort labels naturally only among siblings within the same complete parent path; retain imported source order where supplied.
 4. Recognize numeric prefixes (`1`, `1.1`, `1.2`), Roman numerals (`I`, `II`, `IV`), alphabetic prefixes (`A`, `B`), and then plain text.
 5. Render an Activity as a colored group label when it owns deeper child rows.
 6. Render only the changed suffix of a repeated hierarchy path. A parent label must not be repeated on every child row.

@@ -202,7 +202,9 @@ Each sector controller coordinates its own PAP hierarchy and indicator screens f
 - COBB
 - Continuing programs
 
-Sector controllers load the relevant type, PAP hierarchy, assigned indicators, physical records, and office information. Administrator actions may create or delete PAPs, create or update indicators, and remove physical rows.
+Sector controllers load the relevant type, PAP hierarchy, assigned indicators, physical records, and office information. Display ordering resolves the complete parent hierarchy before letter/number labels; an entry at the parent program level precedes its nested branches. Administrator actions may create or delete PAPs, create or update indicators, and remove physical rows.
+
+Manual PAP forms retain the compatibility fields `title` (displayed as Project), `program` (displayed as Program), and the hidden legacy `project` field. Five optional strings, `subprogram`, `subsubprogram`, `subsubsubprogram`, `subsubsubsubprogram`, and `subsubsubsubsubprogram` (maximum 150 characters each), are stored on the root `ppa_details` record. Each populated nested level requires all preceding program levels, including Program. The supported depth ends at five sub-program levels. They distinguish otherwise identical manual paths during root reuse and are returned in page prefill data. In-place PAP edits update these root attributes in the existing transaction. This extends the form without renumbering existing PAP nodes or changing performance row IDs. Excel preview and import also read explicitly identified program extensions and compare them during root reuse; see [Extended Program Levels](uploadexcel.md#extended-program-levels).
 
 ### Shared Physical Input Controller
 
@@ -250,13 +252,21 @@ All eleven sectors use `PhysicalExcelUploadController` with sector defaults on t
 - Replace existing Excel-marked physical rows for the selected sector, year, and import kind inside the transaction
 - Return understandable errors for invalid or unsupported sheets
 
-Import preview requests are intentionally excluded from edit-history logging because they do not persist business data.
+Import preview requests are intentionally excluded from edit-history logging because they do not persist business data. Preview and import raise short finite PHP execution limits to 300 seconds before workbook access, preserving unlimited or longer limits. Worksheet lookup failures use the existing JSON/redirect error handling rather than escaping as server errors.
 
 ### Physical Performance Excel Export
 
 All viewing roles can generate a sector-specific workbook through `WfpExcelExportController`, subject to office scope. `GassUiReport::rows` supplies report rows for every sector and `SimpleXlsxWriter::writePerformanceReport` produces the download. The official-template branch is currently disabled by an empty `OFFICIAL_TEMPLATE_SECTORS` list. The report includes physical and financial performance sections, percentage formats, and an eleven-row frozen heading. Downloads use no-cache headers and remove the temporary workbook after sending. Export year validation accepts 2000 through 2100.
 
 ## Data Model
+
+### Database Table Names
+
+SQL connections default to the `pms_` table prefix, configured by `DB_TABLE_PREFIX` in `config/database.php`. Migrations create physical names such as `pms_users`, `pms_offices`, and `pms_physical_targets`, including prefixed framework tables (`pms_migrations`, sessions, cache, and jobs). Column names remain unchanged.
+
+Models, migrations, validation rules, and query builders retain logical names such as `users`; Laravel applies the prefix to tables and aliases. Raw SQL must wrap qualified identifiers through the connection grammar. Table names elsewhere in these specifications are logical names unless explicitly prefixed.
+
+Changing the prefix does not rename existing tables or migrate their data. Existing installations must rename their application and framework tables, including the migration repository, before switching to `pms_`; until that conversion, set `DB_TABLE_PREFIX=` to retain access to unprefixed tables. Clear cached configuration after changing this setting. Do not run fresh migrations against an existing dataset to perform the conversion.
 
 ### Core Relationships
 
@@ -307,6 +317,18 @@ The four shared performance tables (`physical_targets`, `physical_accomplishment
 - Composite indexes support sector/year/office page queries.
 
 ## Legacy Compatibility
+
+### Removed Empty Legacy Tables
+
+The eleven obsolete sector link tables (`gass`, `sto`, `enf`, `pa`, `engp`, `lands`, `soilcon`, `nra`, `paria`, `cobb`, and `continuing`) and ten unused universe tables (`sto_universe`, `enf_universe`, `pa_universe`, `engp_universe`, `lands_universe`, `soilcon_universe`, `nra_universe`, `paria_universe`, `cobb_universe`, and `continuing_universe`) were removed manually from the connected database. No current application workflow reads or writes these tables. The active PAP hierarchy and consolidated performance tables remain in place.
+
+Cleanup is maintained as manual SQL in [remove_unused_legacy_tables.sql](../database/manual/remove_unused_legacy_tables.sql), not as Laravel migrations. The removed tables were verified empty and unused before cleanup. Seeded reference catalogs and Laravel infrastructure tables remain in place. Historical migrations are retained for older database upgrades and can recreate the legacy tables on fresh installations; apply the manual cleanup separately after verifying those tables are unused. There is no migration rollback for this manual cleanup.
+
+### Removed Sector Placeholder Columns
+
+The unused JSON placeholders `universe_id`, `accomplishment_id`, and `targets_id` are removed from the eleven legacy sector tables (`gass`, `sto`, `enf`, `pa`, `engp`, `lands`, `soilcon`, `nra`, `paria`, `cobb`, and `continuing`). Runtime physical and financial data use the shared performance tables; these placeholder columns have no runtime readers or writers.
+
+The column removal was followed by manual removal of the containing empty legacy tables. The two temporary cleanup migration files and their migration-history entries were removed at the user's request. Hierarchy fields, framework tables, descriptions maintained by seeders, and compatibility model aliases remain supported.
 
 The database originally used separate target and accomplishment tables for every sector. The consolidated migration copies valid legacy rows into `physical_targets` and `physical_accomplishments`.
 

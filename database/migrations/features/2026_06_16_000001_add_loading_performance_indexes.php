@@ -65,12 +65,12 @@ return new class extends Migration
 
     private function addIndexIfPossible(string $table, array $columns, string $indexName): void
     {
-        if (!Schema::hasTable($table) || $this->indexExists($table, $indexName)) {
+        if (! Schema::hasTable($table) || $this->indexExists($table, $indexName)) {
             return;
         }
 
         foreach ($columns as $column) {
-            if (!Schema::hasColumn($table, $column)) {
+            if (! Schema::hasColumn($table, $column)) {
                 return;
             }
 
@@ -86,7 +86,7 @@ return new class extends Migration
 
     private function dropIndexIfExists(string $table, string $indexName): void
     {
-        if (!Schema::hasTable($table) || !$this->indexExists($table, $indexName)) {
+        if (! Schema::hasTable($table) || ! $this->indexExists($table, $indexName)) {
             return;
         }
 
@@ -97,27 +97,21 @@ return new class extends Migration
 
     private function indexExists(string $table, string $indexName): bool
     {
-        $driver = Schema::getConnection()->getDriverName();
-
-        if (in_array($driver, ['mysql', 'mariadb'], true)) {
-            return count(DB::select("SHOW INDEX FROM `{$table}` WHERE Key_name = ?", [$indexName])) > 0;
-        }
-
-        return false;
+        return Schema::hasIndex($table, $indexName);
     }
 
     private function isUnsupportedIndexColumn(string $table, string $column): bool
     {
         $driver = Schema::getConnection()->getDriverName();
 
-        if (!in_array($driver, ['mysql', 'mariadb'], true)) {
+        if (! in_array($driver, ['mysql', 'mariadb'], true)) {
             return false;
         }
 
         $schema = DB::getDatabaseName();
         $rows = DB::select(
             'SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1',
-            [$schema, $table, $column]
+            [$schema, DB::connection()->getTablePrefix().$table, $column]
         );
 
         return in_array(strtolower((string) ($rows[0]->DATA_TYPE ?? '')), [
