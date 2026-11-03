@@ -81,3 +81,25 @@ for (const role of ['admin', 'regional', 'penro', 'users']) {
         });
     }
 }
+
+test('PAP edit lookup key follows the same hierarchy order as table rows', () => {
+    const source = fs.readFileSync('resources/views/components/physical_highlight_script.blade.php', 'utf8');
+    const keyBody = source.match(/const getCoreKey = \(item\) => \[(.*?)\]\.join\('\|'\);/s)?.[1] || '';
+    const fields = Array.from(keyBody.matchAll(/item\?\.([a-z_]+)/g), match => match[1]);
+
+    assert.deepEqual(fields, [
+        'title', 'program', 'project', 'subprogram', 'subsubprogram',
+        'subsubsubprogram', 'subsubsubsubprogram', 'subsubsubsubsubprogram',
+    ]);
+});
+
+test('all sector edit forms update the selected indicator after a hierarchy change', () => {
+    for (const sector of ['gass', 'sto', 'enf', 'pa', 'engp', 'lands', 'soilcon', 'nra', 'paria', 'cobb', 'continuing']) {
+        const source = fs.readFileSync(`resources/views/admin/${sector}/partials/${sector}_physical_modal_scripts.blade.php`, 'utf8');
+        const updateCondition = source.match(/const shouldUpdateExistingIndicator = Boolean\((.*?)\n\s*\);/s)?.[1] || '';
+
+        assert.match(updateCondition, /indicatorId/);
+        assert.match(updateCondition, /form\.dataset\.editMode === 'true'/);
+        assert.doesNotMatch(updateCondition, /matchedIndicator/);
+    }
+});

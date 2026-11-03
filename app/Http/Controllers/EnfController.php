@@ -2047,22 +2047,28 @@ private function getIndicatorsGroupedByProgram(array $programIds, ?int $year = n
     $programIdLookup = array_fill_keys($programIds->all(), true);
 
     $indicatorAssignments = collect();
+    $explicitOfficeIds = [];
 
     DB::table('ppa')
         ->whereIn('id', $programIds->all())
         ->whereNotNull('indicator_id')
         ->get(['id', 'indicator_id', 'office_id'])
-        ->each(function ($row) use (&$indicatorAssignments) {
+        ->each(function ($row) use (&$indicatorAssignments, &$explicitOfficeIds) {
             $programId = (int) ($row->id ?? 0);
             $indicatorId = (int) ($row->indicator_id ?? 0);
             if ($programId <= 0 || $indicatorId <= 0) {
                 return;
             }
 
+            $officeIds = $this->parseJsonIdArray($row->office_id ?? null);
+            if ($row->office_id !== null) {
+                $explicitOfficeIds[$programId.'|'.$indicatorId] = $officeIds;
+            }
+
             $indicatorAssignments->push([
                 'program_id' => $programId,
                 'indicator_id' => $indicatorId,
-                'office_ids' => $this->parseJsonIdArray($row->office_id ?? null),
+                'office_ids' => $officeIds,
                 'sort_order' => PHP_INT_MAX,
             ]);
         });
@@ -2071,7 +2077,7 @@ private function getIndicatorsGroupedByProgram(array $programIds, ?int $year = n
         ->when($year !== null, fn ($query) => $query->where('years', $year))
         ->orderBy('id')
         ->get(['id', 'office_ids', 'values'])
-        ->each(function ($target) use (&$indicatorAssignments, $programIdLookup) {
+        ->each(function ($target) use (&$indicatorAssignments, $programIdLookup, $explicitOfficeIds) {
             $meta = $this->parseSectionValues($target->values ?? null);
             $programId = (int) ($meta['row_id'] ?? $meta['program_id'] ?? 0);
             $indicatorId = (int) ($meta['indicator_id'] ?? 0);
@@ -2081,6 +2087,10 @@ private function getIndicatorsGroupedByProgram(array $programIds, ?int $year = n
             }
 
             $officeId = (int) ($target->office_ids ?? 0);
+            if (array_key_exists($programId.'|'.$indicatorId, $explicitOfficeIds)
+                && ! in_array($officeId, $explicitOfficeIds[$programId.'|'.$indicatorId], true)) {
+                return;
+            }
             $indicatorAssignments->push([
                 'program_id' => $programId,
                 'indicator_id' => $indicatorId,
@@ -2093,7 +2103,7 @@ private function getIndicatorsGroupedByProgram(array $programIds, ?int $year = n
         ->when($year !== null, fn ($query) => $query->where('years', $year))
         ->orderBy('id')
         ->get(['id', 'office_ids', 'values'])
-        ->each(function ($accomplishment) use (&$indicatorAssignments, $programIdLookup) {
+        ->each(function ($accomplishment) use (&$indicatorAssignments, $programIdLookup, $explicitOfficeIds) {
             $meta = $this->parseSectionValues($accomplishment->values ?? null);
             $programId = (int) ($meta['row_id'] ?? $meta['program_id'] ?? 0);
             $indicatorId = (int) ($meta['indicator_id'] ?? 0);
@@ -2103,6 +2113,10 @@ private function getIndicatorsGroupedByProgram(array $programIds, ?int $year = n
             }
 
             $officeId = (int) ($accomplishment->office_ids ?? 0);
+            if (array_key_exists($programId.'|'.$indicatorId, $explicitOfficeIds)
+                && ! in_array($officeId, $explicitOfficeIds[$programId.'|'.$indicatorId], true)) {
+                return;
+            }
             $indicatorAssignments->push([
                 'program_id' => $programId,
                 'indicator_id' => $indicatorId,

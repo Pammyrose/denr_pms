@@ -15,7 +15,17 @@ class AccomplishmentReportFormat
 
     public function apply(string $path, array $rows): void
     {
-        $reference = $this->document(file_get_contents(__DIR__.'/../../resources/templates/gass-accomplishment-format.xml'));
+        $referencePath = __DIR__.'/../../resources/templates/gass-accomplishment-format.xml';
+        if (! is_file($referencePath)) {
+            return;
+        }
+
+        $referenceXml = file_get_contents($referencePath);
+        if ($referenceXml === false) {
+            return;
+        }
+
+        $reference = $this->document($referenceXml);
         $ref = new DOMXPath($reference);
         $ref->registerNamespace('s', self::NS);
         $zip = new ZipArchive;

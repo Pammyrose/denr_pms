@@ -152,8 +152,7 @@
                     indicatorId
                     && programId
                     && rowId
-                    && matchedIndicator
-                    && String(matchedIndicator.id || '') === indicatorId
+                    && form.dataset.editMode === 'true'
                 );
 
                 let indicatorResponse;

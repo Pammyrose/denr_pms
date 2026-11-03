@@ -15,6 +15,11 @@ class AccomplishmentReportFormatTest extends TestCase
 {
     public function test_reference_format_is_applied_without_changing_any_body_cell(): void
     {
+        $referencePath = __DIR__.'/../../resources/templates/gass-accomplishment-format.xml';
+        if (! is_file($referencePath)) {
+            $this->markTestSkipped('The optional GASS reference-format asset is not installed.');
+        }
+
         $path = sys_get_temp_dir().'/report-format-'.bin2hex(random_bytes(5)).'.xlsx';
         $rows = [
             ['pap' => 'Current major PAP', 'office' => 'CAR', 'is_financial_summary' => true, 'financial_target' => ['jan' => 123.45], 'financial_accomplishment' => ['jan' => 50]],
@@ -34,7 +39,7 @@ class AccomplishmentReportFormatTest extends TestCase
             $styles = $this->xml($zip->getFromName('xl/styles.xml'));
             $theme = $this->xml($zip->getFromName('xl/theme/theme1.xml'));
             $zip->close();
-            $reference = $this->xml(file_get_contents(__DIR__.'/../../resources/templates/gass-accomplishment-format.xml'));
+            $reference = $this->xml(file_get_contents($referencePath));
             $s = new DOMXPath($sheet);
             $r = new DOMXPath($reference);
             $ns = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';

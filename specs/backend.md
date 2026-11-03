@@ -124,7 +124,7 @@ All application routes are defined in `routes/web.php` and use Laravel's web mid
 | Audit history | `GET /history` | Administrator/regional review and PENRO service-area history |
 | Change requests | `GET /accomplishment-change-requests`, `PATCH /accomplishment-change-requests/{submission}/approve` or `/decline` | Administrator/regional review of locked-month corrections |
 | Notifications | `GET /notifications`, `GET /notifications/count` | Submitter request tracking and role-specific notification counts |
-| WFP export | `GET /wfp/export/{sector}` | Office-scoped XLSX download for the viewing roles |
+| WFP export | `GET /wfp/export/{sector}` | Office-scoped XLSX download for the viewing roles; the generated workbook remains downloadable when the optional GASS reference-format asset is absent |
 
 Route names are part of the application contract. They are used by Blade templates, JavaScript endpoint configuration, redirects, and the audit middleware; renaming a route requires updating all consumers.
 
@@ -402,7 +402,7 @@ Do not expose stack traces, SQL, secrets, or sensitive request data in productio
 
 ## Caching and Performance
 
-- Dashboard summaries are cached by year, selected sector, and office scope.
+- Dashboard summaries are calculated for each request so completed sector saves appear immediately; only on-demand PAP/indicator detail lists and year options are cached.
 - Authenticated dashboard requests with `X-Dashboard-Partial: 1` return only the shared dashboard content; role middleware and office scoping are identical to full-page requests.
 - `X-Dashboard-List: pap` or `indicator` returns the corresponding modal body from the same authenticated route. Detail lists are cached separately by list type, year, validated sector, and authorized office scope; summaries no longer build them eagerly.
 - Year options are cached separately and for a slightly longer interval.
@@ -414,7 +414,7 @@ Do not expose stack traces, SQL, secrets, or sensitive request data in productio
 - Large legacy migrations process rows in chunks.
 - Large imports should avoid loading unnecessary workbook data into memory.
 
-Any mutation that affects cached dashboard totals must account for cache freshness. The present short cache duration limits staleness; explicit invalidation may be introduced if immediate consistency becomes required.
+Dashboard summary totals intentionally bypass the shared cache to provide immediate consistency after data saves.
 
 For local diagnostics, run `php tools/profile-page-loading.php` to compare an uncached and cached administrator dashboard render using an isolated array cache. Add `--persistent-cache` to use the configured cache store. The command requires an existing administrator, prints timings and query counts without user records or connection credentials, and does not change performance records. Its measurements exclude browser/network time and HTTP middleware.
 

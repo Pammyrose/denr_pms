@@ -20,7 +20,7 @@ Sign-in and email-code verification share `auth/layout.blade.php` and the respon
 
 PMS uses a server-rendered frontend built with Laravel Blade. Controllers prepare the page data, Blade templates generate the initial HTML, and browser JavaScript adds interactive tables, filters, charts, modals, asynchronous saves, and user preferences.
 
-Dashboard office, sector, and year filters fetch shared result markup in place through the authenticated dashboard route. Rapid selections are debounced, older requests are cancelled, and stale responses cannot overwrite the latest selection. Successful updates preserve browser history; failed requests leave existing results visible. Without JavaScript, the Apply filters button submits the form normally. Chart and modal-row handlers support replaced content across all four role views.
+Dashboard office, sector, and year filters fetch shared result markup in place through the authenticated dashboard route. Rapid selections are debounced, older requests are cancelled, and stale responses cannot overwrite the latest selection. While the dashboard tab is visible, it refreshes the current filters every 30 seconds so saved sector data appears without a manual reload. Successful updates preserve browser history; failed requests leave existing results visible. Without JavaScript, the Apply filters button submits the form normally. Chart and modal-row handlers support replaced content across all four role views.
 
 PAP and indicator detail tables load when their cards open. A modal shares its in-flight request and reuses successful results until the filters replace the dashboard. Failed list requests offer Retry, and responses for removed modals are ignored. The initial page and filter responses include counts and empty modal shells rather than hidden record tables.
 
@@ -310,7 +310,7 @@ Next province/group subtotal
 
 Rules:
 
-- The office lines are derived from the indicator's assigned office IDs.
+- The office lines are derived from the indicator's assigned office IDs. When legacy target or accomplishment rows still exist for an unassigned office, the explicit current assignment takes precedence, so removing an office in Edit removes its lines after reload without deleting its historical values.
 - A selected parent and its selected children remain in their hierarchy group.
 - A PENRO-backed group receives one subtotal line before its office input lines.
 - CAR is always the first aggregate line.

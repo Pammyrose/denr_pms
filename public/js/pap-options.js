@@ -1,5 +1,19 @@
 (() => {
     const programLevels = ['subprogram', 'subsubprogram', 'subsubsubprogram', 'subsubsubsubprogram', 'subsubsubsubsubprogram'];
+    const useProgramStyleForActivityButtons = () => {
+        document.querySelectorAll('.bi.bi-plus-lg').forEach(icon => {
+            icon.className = 'fa fa-plus';
+        });
+    };
+
+    if (typeof document === 'undefined' || typeof document.querySelectorAll !== 'function') {
+        // Server-side and test contexts expose the hierarchy helpers without a DOM.
+    } else if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', useProgramStyleForActivityButtons, { once: true });
+    } else {
+        useProgramStyleForActivityButtons();
+    }
+
     window.pmsExcelPreviewHierarchy = row => [
         row?.title, row?.program, ...programLevels.map(field => row?.[field]),
         row?.project, ...(Array.isArray(row?.hierarchy) ? row.hierarchy : []),

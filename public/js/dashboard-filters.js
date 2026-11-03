@@ -80,6 +80,11 @@
         applyFilters(event.target);
     });
     window.addEventListener('popstate', () => scheduleUpdate(window.location.href, false));
+    window.setInterval?.(() => {
+        if (document.visibilityState === 'visible' && !activeRequest) {
+            scheduleUpdate(window.location.href, false);
+        }
+    }, 30000);
 
     async function loadList(body) {
         if (!body || body.dataset.loaded === 'true' || body.dataset.loading === 'true') return;

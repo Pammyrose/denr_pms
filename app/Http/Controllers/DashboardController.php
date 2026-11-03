@@ -74,11 +74,9 @@ class DashboardController extends Controller
             return view('components.dashboard_' . $list . '_list', [$list . 'List' => $records]);
         }
 
-        $dashboardSummary = Cache::flexible(
-            'dashboard.summary.v27.' . $year . '.sector.' . $selectedSector . '.offices.' . $officeScopeKey,
-            [120, 1800],
-            fn () => $this->buildDashboardSummary($visibleFieldConfigs->all(), $year, $officeScope)
-        );
+        // Overview totals must reflect successful sector saves immediately.
+        // Only the on-demand detail lists and year options remain cached.
+        $dashboardSummary = $this->buildDashboardSummary($visibleFieldConfigs->all(), $year, $officeScope);
 
         $fieldStats = $dashboardSummary['fieldStats'];
         $overallTarget = $dashboardSummary['overallTarget'];
