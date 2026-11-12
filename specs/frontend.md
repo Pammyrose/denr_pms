@@ -460,6 +460,7 @@ Long-term fixes should be extracted into shared Blade components and shared Java
 - Both the regular physical Save action and Save All attach the reason collected in the locked-accomplishment modal to every changed locked period. They leave queued records out of the browser's saved-value cache and report that the request was sent for review.
 - Notification change reasons and remarks remain centered beneath their value card within the Values column. Notification-row cells are horizontally centered beneath their headings and vertically centered for submitters and reviewers; text within value cards and decline forms remains left-aligned.
 - Administrator/regional reviewers use the change-request screen to inspect targets and proposed values, approve a pending request, or decline it with a reason.
+- Approval uses a centered Bootstrap confirmation modal with Cancel and Approve and save actions. Confirming submits the selected request with CSRF protection; canceling closes the modal without submitting.
 - User, CENRO, and PENRO accounts track their own pending, approved, and declined submissions at `/notifications`. Displayed decisions are marked read.
 - Sidebar badges receive role-specific counts from the shared notification service and `/notifications/count`.
 

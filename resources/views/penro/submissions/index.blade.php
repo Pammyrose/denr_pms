@@ -130,14 +130,11 @@
                                     </td>
                                     <td style="min-width: 210px">
                                         @if($submission->status === 'pending')
-                                            <form method="POST" action="{{ route('accomplishment-requests.approve', $submission) }}" class="d-inline">
-                                                @csrf
-                                                @method('PATCH')
-                                                <button class="btn btn-success btn-sm" type="submit"
-                                                        onclick="return confirm('Approve and save this accomplishment?')">
-                                                    <i class="fa fa-check me-1"></i>Approve
-                                                </button>
-                                            </form>
+                                            <button class="btn btn-success btn-sm" type="button"
+                                                    data-bs-toggle="modal" data-bs-target="#approveSubmissionModal"
+                                                    data-approve-url="{{ route('accomplishment-requests.approve', $submission) }}">
+                                                <i class="fa fa-check me-1"></i>Approve
+                                            </button>
                                             <button class="btn btn-outline-danger btn-sm" type="button"
                                                     aria-controls="decline-{{ $submission->id }}" aria-expanded="false"
                                                     onclick="toggleDeclineForm({{ $submission->id }}, this)">
@@ -174,9 +171,51 @@
         </main>
     </div>
 
+    <div class="modal fade" id="approveSubmissionModal" tabindex="-1"
+         aria-labelledby="approveSubmissionModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="approveSubmissionModalLabel">Approve accomplishment</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">Approve and save this accomplishment?</div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <form method="POST" id="approveSubmissionForm">
+                        @csrf
+                        @method('PATCH')
+                        <button class="btn btn-success" type="submit" disabled>
+                            <i class="fa fa-check me-1"></i>Approve and save
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="{{ asset('vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
     <script src="{{ asset('js/notification-content.js') }}?v=1"></script>
     <script>
+        const approvalModal = document.getElementById('approveSubmissionModal');
+        const approvalForm = document.getElementById('approveSubmissionForm');
+        const approvalButton = approvalForm.querySelector('button[type="submit"]');
+
+        approvalModal.addEventListener('show.bs.modal', (event) => {
+            const url = event.relatedTarget?.dataset.approveUrl;
+            approvalButton.disabled = !url;
+            if (url) approvalForm.action = url;
+        });
+
+        approvalModal.addEventListener('hidden.bs.modal', () => {
+            approvalForm.removeAttribute('action');
+            approvalButton.disabled = true;
+        });
+
+        approvalForm.addEventListener('submit', () => {
+            approvalButton.disabled = true;
+        });
+
         function toggleDeclineForm(submissionId, button) {
             const formContainer = document.getElementById(`decline-${submissionId}`);
             if (!formContainer) return;
