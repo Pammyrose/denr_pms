@@ -6,7 +6,7 @@
     <title>Notifications - PMS</title>
     <link href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
     <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/notifications.css') }}?v=6">
+    <link rel="stylesheet" href="{{ asset('css/notifications.css') }}?v=7">
 </head>
 <body class="bg-light">
     @include('components.nav')

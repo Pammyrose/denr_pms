@@ -21,7 +21,8 @@
 }
 
 .notification-table tbody td {
-    vertical-align: top;
+    text-align: center;
+    vertical-align: middle;
 }
 
 .notification-values-cell {
