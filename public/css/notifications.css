@@ -20,6 +20,10 @@
     white-space: nowrap;
 }
 
+.notification-table tbody td {
+    vertical-align: top;
+}
+
 .notification-values-cell {
     text-align: center;
 }
