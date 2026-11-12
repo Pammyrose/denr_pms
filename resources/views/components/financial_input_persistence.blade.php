@@ -1898,6 +1898,70 @@
       window.addEventListener('resize', scheduleVisiblePerformanceInputs, { passive: true });
     }
 
+    // Sector scripts provide the regular physical Save action. Route its accomplishment
+    // requests through the same locked-period preparation as Save All so a CENRO's
+    // modal reason is included in the queued request.
+    if (typeof saveSectionEntries === 'function') {
+      const originalSaveSectionEntries = saveSectionEntries;
+
+      saveSectionEntries = async function (sectionType, options = {}) {
+        if (sectionType !== 'accomp') {
+          return originalSaveSectionEntries(sectionType, options);
+        }
+
+        const {
+          requireVisible = true,
+          showAlerts = true,
+          precomputedEntries = null,
+        } = options;
+
+        if (requireVisible && !(accompVisible || remarksVisible)) {
+          if (showAlerts) {
+            showTopRightErrorAlert('Please open Accomplishments first before saving.');
+          }
+
+          return { success: false, skipped: true, message: 'Section is not visible.' };
+        }
+
+        let entries = Array.isArray(precomputedEntries)
+          ? precomputedEntries
+          : collectChangedAccomplishmentEntries();
+
+        if (entries.length === 0) {
+          return { success: true, skipped: true, message: 'No rows to save.' };
+        }
+
+        entries = attachTouchedPeriods(entries, 'accomp');
+
+        if (config.canRequestLockedChanges && entries.some(entryChangesLockedMonth)) {
+          entries = addLockedChangeReasons(entries, 'accomp');
+
+          if (entries.some(entry => entryChangesLockedMonth(entry)
+            && !String(entry.change_reason || '').trim())) {
+            if (showAlerts) {
+              showTopRightErrorAlert('Please enter a reason in the locked-accomplishment modal before saving.');
+            }
+
+            return { success: false, message: 'A reason is required for locked-month changes.' };
+          }
+        }
+
+        const result = await savePhysicalAccomplishments(entries);
+
+        if (showAlerts) {
+          if (!result.success) {
+            showTopRightErrorAlert('Error saving accomplishments. Please try again.');
+          } else if (result.pending_approval) {
+            showTopRightSuccessAlert('Locked-month change request submitted for Regional Office/admin approval.');
+          } else if (!result.skipped) {
+            showTopRightSuccessAlert('Data saved successfully.');
+          }
+        }
+
+        return result;
+      };
+    }
+
     if (typeof saveAllSectionEntries === 'function') {
       saveAllSectionEntries = async function () {
         const saveAllBtn = document.getElementById('saveAllBtn');

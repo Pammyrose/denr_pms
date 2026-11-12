@@ -87,6 +87,11 @@ function saveAllHarness(results, locked = false, reason = '') {
         entryChangesLockedMonth: () => locked,
         addLockedChangeReasons: entries => entries.map(item => ({ ...item, change_reason: reason })),
         saveSectionEntries: save, savePhysicalAccomplishments: save, saveEntries: save,
+        PMSButtonLoading: {
+            isBusy: () => false,
+            start: target => { target.disabled = true; },
+            stop: target => { target.disabled = false; },
+        },
         showTopRightErrorAlert: message => alerts.push({ kind: 'error', message }),
         showTopRightSuccessAlert: message => alerts.push({ kind: 'success', message }),
     };
@@ -124,4 +129,34 @@ test('Save All reports requests pending approval rather than confirmed saves', a
     assert.equal(app.alerts[0].kind, 'success');
     assert.match(app.alerts[0].message, /submitted.*approval/);
     assert.equal(app.button.disabled, false);
+});
+
+test('Regular physical Save attaches a locked-month reason and reports queued approval', async () => {
+    const alerts = [];
+    let savedEntries = null;
+    const context = {
+        saveSectionEntries: async () => ({ success: true }),
+        accompVisible: true,
+        remarksVisible: false,
+        config: { canRequestLockedChanges: true },
+        collectChangedAccomplishmentEntries: () => [entry],
+        attachTouchedPeriods: entries => entries.map(item => ({ ...item, changed_periods: ['jan'] })),
+        entryChangesLockedMonth: item => item.changed_periods?.includes('jan'),
+        addLockedChangeReasons: entries => entries.map(item => ({ ...item, change_reason: 'Source corrected.' })),
+        savePhysicalAccomplishments: async entries => {
+            savedEntries = entries;
+            return { success: true, pending_approval: true };
+        },
+        showTopRightErrorAlert: message => alerts.push({ kind: 'error', message }),
+        showTopRightSuccessAlert: message => alerts.push({ kind: 'success', message }),
+    };
+    const start = source.indexOf('    if (typeof saveSectionEntries === \'function\') {');
+    const end = source.indexOf('\n    if (typeof saveAllSectionEntries === \'function\') {', start);
+    assert.ok(start >= 0 && end > start);
+    vm.runInNewContext(source.slice(start, end) + '\nthis.savePhysicalSection = saveSectionEntries;', context);
+
+    const result = await context.savePhysicalSection('accomp');
+    assert.equal(result.pending_approval, true);
+    assert.equal(savedEntries[0].change_reason, 'Source corrected.');
+    assert.match(alerts[0].message, /submitted.*approval/);
 });
